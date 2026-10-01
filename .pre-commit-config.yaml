@@ -1,0 +1,33 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: detect-private-key
+
+  # Tools run from the backend's uv environment so versions always match uv.lock.
+  - repo: local
+    hooks:
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project top-match-backend ruff check --fix
+        language: system
+        types: [python]
+        files: ^top-match-backend/
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project top-match-backend ruff format
+        language: system
+        types: [python]
+        files: ^top-match-backend/
+      - id: mypy
+        name: mypy
+        entry: uv run --directory top-match-backend mypy app
+        language: system
+        types: [python]
+        files: ^top-match-backend/
+        pass_filenames: false
