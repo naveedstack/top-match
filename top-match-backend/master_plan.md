@@ -10,11 +10,11 @@ stage's exit criteria pass.
 | Stage | Name                                        | PRD milestone | Status         |
 | ----- | ------------------------------------------- | ------------- | -------------- |
 | 1     | Foundation & Database                       | —             | ✅ Done        |
-| 2     | Core Models & Job Endpoints                 | Milestone 1   | ⬜ Not started |
-| 3     | Candidate Apply & PDF Ingestion             | Milestone 1   | ⬜ Not started |
+| 2     | Core Models & Job Endpoints                 | Milestone 1   | ✅ Done        |
+| 3     | Candidate Apply & PDF Ingestion             | Milestone 1   | ✅ Done        |
 | 4     | AI Evaluation Engine                        | Milestone 1   | ⬜ Not started |
 | 5     | Pipeline Integration, Leaderboard & Export  | Milestone 2   | ⬜ Not started |
-| 6     | Recruiter Auth & Access Control             | Milestone 2   | ⬜ Not started |
+| 6     | Recruiter Auth & Access Control             | Milestone 2   | ✅ Done (Google OAuth deferred) |
 | 7     | Compliance, Hardening & Beta Readiness      | Beta launch   | ⬜ Not started |
 
 ## Working rules (every stage)
@@ -23,8 +23,7 @@ stage's exit criteria pass.
   `services/`, database queries in `repositories/`, external APIs (Gemini, storage) in `integrations/`.
 - Every schema change is an Alembic migration, reviewed before it is applied. Migrations must
   upgrade and downgrade cleanly on an empty database.
-- Recruiter-only endpoints depend on a `CurrentRecruiter` dependency from Stage 2 onward. It is a
-  local-only stub until Stage 6 replaces it with real auth, so no route has to be rewritten later.
+- Recruiter-only endpoints depend on a `CurrentRecruiter` dependency. It reads a Bearer access JWT.
 - Gemini and file storage are mocked in tests. Real Gemini calls happen only in the eval script.
 - `ruff check`, `ruff format --check`, `mypy app` and `pytest` are green before a stage is marked done.
 - Never log resume text, extracted text or candidate emails.
@@ -36,14 +35,14 @@ Settled:
 - **Tooling:** uv, Python 3.14, ruff, mypy (strict), pytest, pre-commit.
 - **Database:** PostgreSQL (Aiven) via async SQLAlchemy 2.x + asyncpg, migrations with Alembic.
 - **PDF rasterizer:** `pypdfium2` (Apache-2.0/BSD). PyMuPDF is AGPL, which doesn't fit a proprietary SaaS.
+- **OCR:** Tesseract (`pytesseract` + the `tesseract` binary). Rasterize pages, then OCR the bitmaps.
+- **Auth:** In-house email/password (`pwdlib` argon2 + `pyjwt` access and refresh tokens). Google OAuth is deferred.
 
 Open (decide at the start of the stage that needs it):
 
 | Decision                  | Options                                                         | Decide in |
 | ------------------------- | --------------------------------------------------------------- | --------- |
 | LLM orchestration         | LangChain (`langchain-google-genai`) vs direct `google-genai` SDK. Current choice: LangChain, isolated behind `services/evaluation.py` so it can be swapped. | Stage 4 |
-| OCR engine                | Gemini vision transcription vs Tesseract (`pytesseract`). Measure both on ~10 real resumes for accuracy and latency. | Stage 3 |
-| Auth                      | Build in-house (`pwdlib`, `pyjwt`, `authlib`) vs managed provider (Clerk, Auth0, Supabase Auth) where the backend only verifies JWTs. | Stage 6 |
 | Background processing     | FastAPI `BackgroundTasks` for beta → durable queue (`arq` + Redis or similar) before public launch. | Stage 5 / 7 |
 
 ## Package roadmap
@@ -52,10 +51,10 @@ Open (decide at the start of the stage that needs it):
 | ----- | -------------------------------------------------------------------- |
 | 1     | Done: fastapi, uvicorn[standard], pydantic-settings, sqlalchemy[asyncio], asyncpg, alembic, httpx, python-multipart |
 | 2     | `pydantic[email]` (needed for `EmailStr`)                            |
-| 3     | `pypdfium2`, `pillow`, `slowapi` (or rate limiting at the proxy), OCR engine per decision |
+| 3     | `pytesseract`, `slowapi` (`pypdfium2` + `pillow` already present) |
 | 4     | `langchain-google-genai` (pulls in `langchain-core`)                 |
 | 5     | None — CSV via stdlib `csv` + `StreamingResponse`                   |
-| 6     | Per auth decision: `pwdlib[argon2]`, `pyjwt`, `authlib` — or the provider's SDK |
+| 6     | `pwdlib[argon2]`, `pyjwt` (Google/`authlib` deferred) |
 | 7     | S3 client (`aioboto3`), error tracking (`sentry-sdk`), queue (`arq`) if needed |
 
 ---
@@ -85,7 +84,7 @@ lint, type check and tests pass.
 ### Models
 
 - **`Recruiter`** — id, email (unique), name, created_at. Created now so every job has an owner;
-  login arrives in Stage 6.
+  email/password login was added in Stage 6.
 - **`Job`** — id (UUID), recruiter_id (FK), title, description, requirements, `public_slug`
   (unique, random, non-guessable — e.g. `secrets.token_urlsafe`), status (`open` / `closed`),
   created_at, closed_at. `closed_at` starts the data-retention clock (Stage 7).
@@ -110,8 +109,8 @@ Evaluation and export tables are added in the stages that define their shape (4 
 
 ### Notes
 
-- `CurrentRecruiter` dependency in `api/deps.py` returns a seeded dev recruiter when
-  `ENVIRONMENT=local` and refuses otherwise. Stage 6 replaces it.
+- `CurrentRecruiter` in `api/deps.py` reads a Bearer access JWT (Stage 6). Missing or
+  invalid tokens return `401`.
 - Public responses expose only public fields — never recruiter info or internal IDs.
 - Normalize emails (trim + lowercase) before storing or comparing, so `John@x.com` and
   `john@x.com` count as the same applicant.
@@ -129,18 +128,17 @@ Evaluation and export tables are added in the stages that define their shape (4 
 **Goal:** A candidate submits email + PDF; the file is validated, stored, de-duplicated and turned
 into clean text.
 
-### Apply endpoint — `POST /api/v1/public/jobs/{slug}/applications` (multipart: `email`, `file`)
+### Apply endpoint — `POST /api/v1/public/jobs/{slug}/applications` (JSON: `email`, `file_id`)
+
+Frontend uploads the PDF first (`POST /api/v1/public/files`, raw `application/pdf` body),
+then applies with JSON `{ "email", "file_id" }`. No multipart.
 
 1. Job exists and is `open`, otherwise `404` / `409`.
-2. Validate the upload before doing any work:
-   - Size limit (`MAX_UPLOAD_BYTES`, e.g. 5 MB), enforced while reading — not after.
-   - File starts with `%PDF-`. Don't trust the extension or `Content-Type`.
-   - Opens without a password; page count ≤ `MAX_RESUME_PAGES` (e.g. 5).
-3. Fast duplicate check for a friendly error, then store the PDF, then insert the `Application`.
+2. `file_id` must already exist in storage and not already be tied to an application.
+3. Fast duplicate check for a friendly error, then insert the `Application`.
    The unique constraint is the real guard: two simultaneous submissions both pass the pre-check,
-   so catch `IntegrityError` → `409` and delete the just-stored file.
-4. Store the original PDF through `integrations/storage.py` (local disk now, S3 in Stage 7). The
-   storage key is generated by the server, never derived from the uploaded filename.
+   so catch `IntegrityError` → `409`.
+4. Storage key is the upload id (`{file_id}.pdf`), never derived from a filename.
 5. Return `202 Accepted` with the application id. The candidate never waits for AI processing.
 
 ### Ingestion pipeline (`integrations/pdf.py`, `services/ingestion.py`)
@@ -292,21 +290,24 @@ fail a candidate's submission.
 
 ---
 
-## Stage 6: Recruiter Auth & Access Control
+## Stage 6: Recruiter Auth & Access Control ✅
 
-**Goal:** Only the owning recruiter can see their jobs, candidates and exports (PRD: Google/Email login).
+**Goal:** Only the owning recruiter can see their jobs (PRD: email login; Google deferred).
 
-- Resolve the auth decision (in-house vs managed provider) before starting.
-- In-house path: argon2 password hashing, Google OAuth, short-lived access token in an httpOnly,
-  Secure, SameSite cookie for the Next.js frontend.
-- Replace the dev `CurrentRecruiter` stub; every recruiter route checks ownership.
-- Rate-limit login to slow down brute force.
+- In-house email/password: argon2 via `pwdlib`, JWT access token (15 minutes, `Authorization: Bearer`)
+  and refresh token (7 days, `jti` stored, rotated on refresh, revoked on logout).
+- One company is one `Recruiter` (`company_name`, `password_hash`). Signup copies `company_name` into
+  `name` so existing job code keeps working.
+- Endpoints: `POST /api/v1/auth/register`, `/login`, `/refresh`, `/logout`, `GET /api/v1/auth/me`.
+- `CurrentRecruiter` reads the access JWT. Job routes stay on the same paths.
+- Register and login are rate-limited.
+- Google OAuth is deferred.
 
-### Exit criteria
+### Exit criteria (met)
 
 - Unauthenticated requests to recruiter routes → `401`.
-- Cross-recruiter access → `404` on every recruiter endpoint (job, leaderboard, application, export).
-- The dev stub cannot activate outside `ENVIRONMENT=local`.
+- Cross-recruiter job access → `404`.
+- Refresh reuse after rotation or logout → `401`.
 
 ---
 

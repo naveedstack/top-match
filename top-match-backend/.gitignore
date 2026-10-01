@@ -24,3 +24,9 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+
+# Local resume storage
+var/
+
+# Local Tesseract prefix (optional; prefer `brew install tesseract`)
+.tesseract/

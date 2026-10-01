@@ -1,5 +1,6 @@
 import re
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import PostgresDsn, SecretStr, field_validator
@@ -14,9 +15,20 @@ class Settings(BaseSettings):
     LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     API_V1_STR: str = "/api/v1"
     CORS_ORIGINS: list[str] = []
+    PUBLIC_APP_URL: str = "http://localhost:3000"
 
     DATABASE_URL: PostgresDsn
     GEMINI_API_KEY: SecretStr
+
+    JWT_SECRET: SecretStr
+    ACCESS_TOKEN_MINUTES: int = 15
+    REFRESH_TOKEN_DAYS: int = 7
+
+    STORAGE_DIR: Path = Path("var/resumes")
+    MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024
+    MAX_RESUME_PAGES: int = 5
+    OCR_DPI: int = 150
+    OCR_MAX_PAGE_PIXELS: int = 4_000_000
 
     @field_validator("DATABASE_URL", mode="before")
     @classmethod
