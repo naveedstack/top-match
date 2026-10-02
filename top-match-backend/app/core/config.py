@@ -24,6 +24,16 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_MINUTES: int = 15
     REFRESH_TOKEN_DAYS: int = 7
 
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    LLM_TIMEOUT_SECONDS: int = 60
+    LLM_MAX_ATTEMPTS: int = 3
+    LLM_MAX_CONCURRENCY: int = 2
+    STUCK_APPLICATION_MINUTES: int = 5
+    PIPELINE_ENABLED: bool = True
+    RESUME_TOKEN_MINUTES: int = 15
+    RETENTION_DAYS: int = 30
+    GEMINI_DATA_USE_ACKNOWLEDGED: bool = False
+
     STORAGE_DIR: Path = Path("var/resumes")
     MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024
     MAX_RESUME_PAGES: int = 5

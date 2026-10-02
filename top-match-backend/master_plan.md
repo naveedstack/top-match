@@ -12,10 +12,10 @@ stage's exit criteria pass.
 | 1     | Foundation & Database                       | —             | ✅ Done        |
 | 2     | Core Models & Job Endpoints                 | Milestone 1   | ✅ Done        |
 | 3     | Candidate Apply & PDF Ingestion             | Milestone 1   | ✅ Done        |
-| 4     | AI Evaluation Engine                        | Milestone 1   | ⬜ Not started |
-| 5     | Pipeline Integration, Leaderboard & Export  | Milestone 2   | ⬜ Not started |
+| 4     | AI Evaluation Engine                        | Milestone 1   | ✅ Done        |
+| 5     | Pipeline Integration, Leaderboard & Export  | Milestone 2   | ✅ Done (durable queue deferred) |
 | 6     | Recruiter Auth & Access Control             | Milestone 2   | ✅ Done (Google OAuth deferred) |
-| 7     | Compliance, Hardening & Beta Readiness      | Beta launch   | ⬜ Not started |
+| 7     | Compliance, Hardening & Beta Readiness      | Beta launch   | ✅ Beta-safe slice (S3, queue, Sentry, Docker/CI, load test, 50×5 deferred) |
 
 ## Working rules (every stage)
 
@@ -37,13 +37,8 @@ Settled:
 - **PDF rasterizer:** `pypdfium2` (Apache-2.0/BSD). PyMuPDF is AGPL, which doesn't fit a proprietary SaaS.
 - **OCR:** Tesseract (`pytesseract` + the `tesseract` binary). Rasterize pages, then OCR the bitmaps.
 - **Auth:** In-house email/password (`pwdlib` argon2 + `pyjwt` access and refresh tokens). Google OAuth is deferred.
-
-Open (decide at the start of the stage that needs it):
-
-| Decision                  | Options                                                         | Decide in |
-| ------------------------- | --------------------------------------------------------------- | --------- |
-| LLM orchestration         | LangChain (`langchain-google-genai`) vs direct `google-genai` SDK. Current choice: LangChain, isolated behind `services/evaluation.py` so it can be swapped. | Stage 4 |
-| Background processing     | FastAPI `BackgroundTasks` for beta → durable queue (`arq` + Redis or similar) before public launch. | Stage 5 / 7 |
+- **LLM:** LangChain `ChatGoogleGenerativeAI` with Gemini structured output, isolated in `integrations/llm.py`.
+- **Background processing:** FastAPI `BackgroundTasks` plus a startup/1-minute stuck sweep for beta. A durable queue (`arq` + Redis or similar) stays in Stage 7.
 
 ## Package roadmap
 
@@ -52,7 +47,7 @@ Open (decide at the start of the stage that needs it):
 | 1     | Done: fastapi, uvicorn[standard], pydantic-settings, sqlalchemy[asyncio], asyncpg, alembic, httpx, python-multipart |
 | 2     | `pydantic[email]` (needed for `EmailStr`)                            |
 | 3     | `pytesseract`, `slowapi` (`pypdfium2` + `pillow` already present) |
-| 4     | `langchain-google-genai` (pulls in `langchain-core`)                 |
+| 4     | `langchain-google-genai` (pulls in `langchain-core`) |
 | 5     | None — CSV via stdlib `csv` + `StreamingResponse`                   |
 | 6     | `pwdlib[argon2]`, `pyjwt` (Google/`authlib` deferred) |
 | 7     | S3 client (`aioboto3`), error tracking (`sentry-sdk`), queue (`arq`) if needed |
@@ -180,10 +175,15 @@ for a CAPTCHA (e.g. Cloudflare Turnstile) before public launch.
 
 ---
 
-## Stage 4: AI Evaluation Engine (LangChain + Gemini)
+## Stage 4: AI Evaluation Engine (LangChain + Gemini) ✅
 
 **Goal:** Given job requirements and extracted resume text, produce a validated, explainable
 evaluation.
+
+- Seed eval: `scripts/run_eval.py` with ~10 synthetic resumes (`eval/synthetic/`). Default
+  model is `gemini-3.8-flash` (`gemini-2.5-flash` is retired for new keys). First live run
+  ranked completed resumes with Spearman ~0.88 and 100% citation verification. Google
+  OAuth is still deferred. Apply still returns `received`; the worker is Stage 5.
 
 ### Output schema (`schemas/evaluation.py`)
 
@@ -238,7 +238,7 @@ created_at. Latency and token columns are the PRD's live-performance metrics.
 - Golden-set resumes are PII: keep them out of git, or use synthetic resumes.
 - Start with ~10 resumes here; the full 50 resumes × 5 jobs runs in Stage 7.
 
-### Exit criteria
+### Exit criteria (met)
 
 - Seed eval run produces a sensible ranking with zero unrecoverable schema failures.
 - Non-resume fixtures are refused; a visible-injection fixture is flagged and not scored high.
@@ -246,7 +246,7 @@ created_at. Latency and token columns are the PRD's live-performance metrics.
 
 ---
 
-## Stage 5: Pipeline Integration, Leaderboard & Export
+## Stage 5: Pipeline Integration, Leaderboard & Export ✅
 
 **Goal:** The recruiter's happy path works end to end.
 
@@ -281,12 +281,14 @@ fail a candidate's submission.
 - Record an `ExportEvent` (recruiter, job, application ids, timestamp). This is the PRD's
   "CSV export rate" KPI and the data for comparing AI scores with what recruiters actually picked.
 
-### Exit criteria
+### Exit criteria (met)
 
-- End-to-end test with a mocked LLM: apply → scored in background → correct leaderboard order →
-  CSV content and escaping correct.
-- Restart-recovery test: stuck applications get processed.
-- Measured upload-to-visible-score time against real Gemini, compared to the P95 < 5 s target.
+- Mocked pytest: apply → `process_application` → leaderboard order and status counts, non-resume
+  `refused`, completer failure `failed` then rescore, stuck `received` sweep, CSV formula escape
+  plus `ExportEvent`, cross-recruiter 404.
+- Live Gemini score on `eval/synthetic/01_staff_python_fastapi.txt`: **23.6 s** (model only).
+  Tesseract is not installed on this machine, so OCR was not in the measurement. That misses the
+  P95 < 5 s target; a faster model path and a durable queue stay in Stage 7.
 
 ---
 
@@ -311,9 +313,26 @@ fail a candidate's submission.
 
 ---
 
-## Stage 7: Compliance, Hardening & Beta Readiness
+## Stage 7: Compliance, Hardening & Beta Readiness ✅ (beta-safe slice)
 
 **Goal:** Safe to put real candidates' resumes through it with 3–5 beta recruiters.
+
+### Shipped in this slice
+
+- Apply requires `consented: true` and stores `consented_at`. Public job JSON includes privacy and
+  AI-screening notices plus the hiring-law disclaimer.
+- Retention sweep on startup and every hour: applications on jobs whose `closed_at` is older than
+  `RETENTION_DAYS` (default 30) are deleted with their PDFs. Logs counts only.
+- JSON logs with `request_id`; `X-Request-ID` is accepted or generated and echoed.
+- CSV first row and recruiter job/leaderboard JSON include `SCREENING_DISCLAIMER`.
+- `ENVIRONMENT` staging/production: OpenAPI/docs off; `GEMINI_DATA_USE_ACKNOWLEDGED=true` required
+  (paid-tier Gemini or Vertex AI — no Vertex client in this slice). Local disk storage and
+  `BackgroundTasks` stay.
+
+### Still deferred
+
+- S3 (SSE, presigned URLs, lifecycle), durable queue (`arq`), Sentry, Dockerfile/CI, metrics
+  dashboard, 50×5 golden set, 500-apps/hour load test, database backup/restore drill.
 
 ### Compliance (PRD section)
 

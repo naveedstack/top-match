@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Top Match - Senior Backend Engineer (Distributed Systems) Dashboard</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-primary-fixed": "#131b2e",
+            "on-secondary-fixed": "#001d31",
+            "tertiary": "#000000",
+            "surface-container-low": "#eff4ff",
+            "secondary": "#006398",
+            "surface-container-lowest": "#ffffff",
+            "background": "#f8f9ff",
+            "primary": "#000000",
+            "on-secondary": "#ffffff",
+            "surface-dim": "#cbdbf5",
+            "surface-container-highest": "#d3e4fe",
+            "on-primary-fixed-variant": "#3f465c",
+            "surface-variant": "#d3e4fe",
+            "on-error": "#ffffff",
+            "inverse-primary": "#bec6e0",
+            "tertiary-fixed": "#89f5e7",
+            "on-primary": "#ffffff",
+            "primary-fixed": "#dae2fd",
+            "outline-variant": "#c6c6cd",
+            "surface-bright": "#f8f9ff",
+            "on-error-container": "#93000a",
+            "on-secondary-container": "#00476e",
+            "outline": "#76777d",
+            "secondary-fixed": "#cce5ff",
+            "surface-container": "#e5eeff",
+            "primary-fixed-dim": "#bec6e0",
+            "on-tertiary-fixed-variant": "#005049",
+            "surface": "#f8f9ff",
+            "tertiary-container": "#00201d",
+            "primary-container": "#131b2e",
+            "inverse-surface": "#213145",
+            "secondary-fixed-dim": "#93ccff",
+            "on-secondary-fixed-variant": "#004b73",
+            "on-tertiary-fixed": "#00201d",
+            "on-tertiary-container": "#0c9488",
+            "surface-tint": "#565e74",
+            "error-container": "#ffdad6",
+            "inverse-on-surface": "#eaf1ff",
+            "on-surface": "#0b1c30",
+            "on-surface-variant": "#45464d",
+            "tertiary-fixed-dim": "#6bd8cb",
+            "surface-container-high": "#dce9ff",
+            "error": "#ba1a1a",
+            "on-primary-container": "#7c839b",
+            "on-background": "#0b1c30",
+            "on-tertiary": "#ffffff",
+            "secondary-container": "#5bb8fe"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "space-xs": "0.25rem",
+            "margin": "2rem",
+            "space-xl": "2rem",
+            "space-md": "1rem",
+            "space-lg": "1.5rem",
+            "gutter": "1.5rem",
+            "space-sm": "0.5rem",
+            "gutter-sm": "1rem",
+            "margin-sm": "1rem"
+          },
+          "fontFamily": {
+            "headline-md": ["Inter"],
+            "label-sm": ["Inter"],
+            "headline-sm": ["Inter"],
+            "label-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "headline-lg": ["Inter"],
+            "headline-xl": ["Inter"],
+            "label-md": ["Inter"],
+            "body-lg": ["Inter"],
+            "headline-lg-mobile": ["Inter"],
+            "headline-xl-mobile": ["Inter"],
+            "body-sm": ["Inter"]
+          },
+          "fontSize": {
+            "headline-md": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+            "label-sm": ["11px", {"lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600"}],
+            "headline-sm": ["16px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "label-lg": ["14px", {"lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "500"}],
+            "body-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400"}],
+            "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+            "headline-xl": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700"}],
+            "label-md": ["12px", {"lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500"}],
+            "body-lg": ["16px", {"lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "400"}],
+            "headline-lg-mobile": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600"}],
+            "headline-xl-mobile": ["26px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+            "body-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400"}]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    @keyframes subtlePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(1.15); }
+    }
+    .animate-subtle-pulse {
+      animation: subtlePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+  </style>
+</head>
+<body class="bg-surface font-body-md text-on-surface antialiased min-h-screen flex flex-col">
+<!-- TopNavBar Shared Component -->
+<header class="flex justify-between items-center w-full px-space-lg h-14 max-w-full border-b border-outline-variant bg-surface-container-lowest shadow-sm z-30 sticky top-0">
+<div class="flex items-center gap-space-lg h-full">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined" data-icon="work">work</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-md text-headline-md font-semibold text-on-surface tracking-tight leading-none">Top Match</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Acme Technologies</span>
+</div>
+</div>
+<nav class="hidden md:flex items-center gap-space-md h-full ml-space-md">
+<a class="text-secondary font-headline-sm border-b-2 border-secondary h-full flex items-center px-space-sm" href="#jobs">Jobs</a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#candidates">Candidates</a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#analytics">Analytics</a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#settings">Settings</a>
+</nav>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low transition-colors duration-150" title="Help &amp; Documentation">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+</button>
+<button class="p-1.5 rounded-lg hover:bg-surface-container-low transition-colors duration-150 relative" title="Notifications">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-secondary"></span>
+</button>
+</div>
+<div class="h-5 w-px bg-outline-variant"></div>
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center font-label-md text-label-md font-semibold text-on-secondary-container">
+          AT
+        </div>
+<button class="font-label-md text-label-md text-on-surface-variant hover:text-error transition-colors duration-150">
+          Log out
+        </button>
+</div>
+</div>
+</header>
+<!-- Main Container -->
+<main class="flex-1 w-full max-w-[1536px] mx-auto px-space-md md:px-space-xl py-space-lg flex flex-col gap-space-lg">
+<!-- Screening Legal Disclaimer Banner -->
+<div class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-space-sm md:px-space-md md:py-space-sm flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-secondary" data-icon="info">info</span>
+<p class="font-label-md text-label-md text-on-surface-variant">
+<span class="font-semibold text-on-surface">Mandatory Compliance Notice:</span> This tool is a filtering aid. Hiring decisions must comply with local employment laws regarding AI screening.
+        </p>
+</div>
+<div class="hidden sm:flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-secondary font-medium cursor-pointer hover:underline">Audit Protocol v2.4</span>
+</div>
+</div>
+<!-- Header Section -->
+<div class="flex flex-col gap-space-md">
+<!-- Breadcrumb -->
+<nav class="flex items-center gap-space-xs font-label-sm text-label-sm text-on-surface-variant">
+<a class="hover:text-secondary hover:underline" href="#jobs">Jobs</a>
+<span class="material-symbols-outlined text-on-surface-variant" style="font-size: 14px;">chevron_right</span>
+<span class="text-on-surface font-semibold">Senior Backend Engineer (Distributed Systems)</span>
+<span class="ml-space-xs text-on-surface-variant font-mono">job-84920</span>
+</nav>
+<!-- Title & Action Bar -->
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md pb-space-xs">
+<div class="flex flex-wrap items-center gap-space-md">
+<h1 class="font-headline-xl text-headline-xl text-on-surface tracking-tight">
+            Senior Backend Engineer (Distributed Systems)
+          </h1>
+<span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-lowest border border-outline-variant font-label-sm text-label-sm text-on-surface font-semibold shadow-sm">
+<span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+            Open
+          </span>
+</div>
+<!-- Secondary Actions & Job State Controls -->
+<div class="flex items-center flex-wrap gap-space-sm">
+<button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded-lg bg-surface-container-lowest border border-outline-variant hover:bg-surface-container hover:border-outline text-on-surface font-label-md text-label-md transition-colors duration-150 shadow-sm" onclick="openModal('editModal')">
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="edit">edit</span>
+            Edit Job
+          </button>
+<button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded-lg bg-surface-container-lowest border border-error-container hover:bg-error-container/40 text-error font-label-md text-label-md transition-colors duration-150 shadow-sm" onclick="openModal('closeJobModal')">
+<span class="material-symbols-outlined text-error" data-icon="block">block</span>
+            Close Job
+          </button>
+</div>
+</div>
+<!-- Public Apply Link Box with Toast Trigger -->
+<div class="flex flex-col sm:flex-row sm:items-center justify-between bg-surface-container-lowest border border-outline-variant rounded-xl p-space-sm px-space-md gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<span class="material-symbols-outlined text-on-surface-variant shrink-0" data-icon="link">link</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant shrink-0 font-semibold">Public candidate link:</span>
+<span class="font-body-sm text-body-sm font-mono text-on-surface truncate select-all" id="applyLinkText">https://app.topmatch.example/apply/backend-sr-902</span>
+</div>
+<div class="flex items-center gap-space-sm shrink-0">
+<button class="inline-flex items-center gap-1.5 px-space-md py-1 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm transition-all duration-150" id="copyBtn" onclick="copyApplyLink()">
+<span class="material-symbols-outlined" data-icon="content_copy">content_copy</span>
+<span id="copyBtnText">Copy apply link</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Status Summary Chips Bar -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-space-sm">
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Received</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="inbox">inbox</span>
+</div>
+<div class="mt-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold">42</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">in queue</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-secondary uppercase tracking-wider font-semibold flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary animate-subtle-pulse"></span>
+            Processing
+          </span>
+<span class="material-symbols-outlined text-secondary" data-icon="sync">sync</span>
+</div>
+<div class="mt-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold">5</span>
+<span class="font-label-sm text-label-sm text-secondary font-medium">scoring live</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Scored</span>
+<span class="material-symbols-outlined text-emerald-600" data-icon="verified">verified</span>
+</div>
+<div class="mt-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold">128</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">evaluated</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-semibold">Refused</span>
+<span class="material-symbols-outlined text-on-surface-variant" data-icon="do_not_disturb_on">do_not_disturb_on</span>
+</div>
+<div class="mt-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-on-surface font-bold">14</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">criteria unmet</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col justify-between shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-error uppercase tracking-wider font-semibold">Failed</span>
+<span class="material-symbols-outlined text-error" data-icon="error_outline">error_outline</span>
+</div>
+<div class="mt-space-xs flex items-baseline gap-space-xs">
+<span class="font-headline-lg text-headline-lg text-error font-bold">3</span>
+<span class="font-label-sm text-label-sm text-error font-medium">requires rescore</span>
+</div>
+</div>
+</div>
+<!-- Table Controls & Real-Time Indicator Bar -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-space-md flex flex-col md:flex-row md:items-center justify-between gap-space-md shadow-sm">
+<!-- Filter and Status Polling Indicator -->
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-space-xs">
+<label class="font-label-sm text-label-sm font-semibold text-on-surface-variant" for="statusFilter">Filter:</label>
+<select class="font-label-md text-label-md border border-outline-variant rounded-lg px-2.5 py-1.5 bg-surface-container-lowest text-on-surface focus:border-secondary focus:ring-0" id="statusFilter">
+<option value="all">All statuses (192)</option>
+<option value="received">Received (42)</option>
+<option value="processing">Processing (5)</option>
+<option value="scored">Scored (128)</option>
+<option value="refused">Refused (14)</option>
+<option value="failed">Failed (3)</option>
+</select>
+</div>
+<div class="h-4 w-px bg-outline-variant hidden sm:block"></div>
+<!-- Real-Time Pulse Indicator -->
+<div class="flex items-center gap-2 px-2.5 py-1 rounded-full bg-surface border border-outline-variant/60">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-secondary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">
+            Polling updates every 2s • <span class="text-on-surface font-semibold">Live</span>
+</span>
+</div>
+<!-- State Preview Toggle (Interactive) -->
+<div class="flex items-center gap-1 border border-outline-variant rounded-lg p-0.5 bg-surface">
+<button class="px-2 py-1 text-label-sm font-label-sm rounded bg-surface-container-lowest text-on-surface font-semibold shadow-xs" id="viewTableBtn" onclick="toggleDataView('table')">
+            Leaderboard
+          </button>
+<button class="px-2 py-1 text-label-sm font-label-sm rounded text-on-surface-variant hover:text-on-surface" id="viewEmptyBtn" onclick="toggleDataView('empty')">
+            Empty State
+          </button>
+</div>
+</div>
+<!-- Export CSV Controls -->
+<div class="flex flex-wrap items-center gap-space-md">
+<div class="flex items-center gap-space-sm text-on-surface font-label-sm text-label-sm">
+<label class="flex items-center gap-1.5 cursor-pointer">
+<input checked="" class="text-primary focus:ring-secondary h-3.5 w-3.5 border-outline" name="exportMode" type="radio" value="topN"/>
+<span>Top N</span>
+</label>
+<input class="w-16 px-1.5 py-1 border border-outline-variant rounded-lg font-mono text-center font-label-sm text-label-sm focus:border-secondary focus:ring-0" id="topNInput" max="500" min="1" type="number" value="25"/>
+<span class="text-outline-variant mx-1">|</span>
+<label class="flex items-center gap-1.5 cursor-pointer">
+<input class="text-primary focus:ring-secondary h-3.5 w-3.5 border-outline" name="exportMode" type="radio" value="selected"/>
+<span>Selected (<span class="font-bold text-secondary" id="selectedCount">4</span>)</span>
+</label>
+</div>
+<div class="relative group">
+<button class="inline-flex items-center gap-1.5 px-space-md py-1.5 rounded-lg bg-surface-container-lowest border border-outline hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors duration-150 shadow-sm" onclick="triggerDownload()">
+<span class="material-symbols-outlined" data-icon="download">download</span>
+            Download CSV
+            <span class="material-symbols-outlined text-on-surface-variant" data-icon="help_outline" style="font-size: 14px;">help_outline</span>
+</button>
+<!-- Export Tooltip -->
+<div class="absolute right-0 bottom-full mb-2 hidden group-hover:block w-64 p-space-sm bg-inverse-surface text-inverse-on-surface rounded-lg shadow-xl text-label-sm font-label-sm z-40">
+            Exports include audited rubric breakdown, model version, and recruiter annotations. First row contains legal algorithmic screening disclaimer.
+          </div>
+</div>
+</div>
+</div>
+<!-- Leaderboard Table Container -->
+<div class="bg-surface-container-lowest border border-outline-variant rounded-xl shadow-sm overflow-hidden" id="tableContainer">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface border-b border-outline-variant font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider h-10">
+<th class="w-10 px-4 text-center">
+<input checked="" class="rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" id="selectAllCheckbox" type="checkbox"/>
+</th>
+<th class="px-4 py-2 font-semibold">Rank</th>
+<th class="px-4 py-2 font-semibold">Candidate Email</th>
+<th class="px-4 py-2 font-semibold">Status</th>
+<th class="px-4 py-2 font-semibold">Score</th>
+<th class="px-4 py-2 font-semibold">Verification &amp; Flags</th>
+<th class="px-4 py-2 font-semibold">Applied</th>
+<th class="px-4 py-2 font-semibold text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/60 font-body-sm text-body-sm">
+<!-- Row 1: Rank #1 Marcus Chen -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input checked="" class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface">#1</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-secondary font-bold text-label-sm flex items-center justify-center font-mono">
+                    MC
+                  </div>
+<span class="font-semibold text-on-surface">marcus.chen@example.com</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Scored
+                </span>
+</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<span class="font-mono text-headline-sm font-bold text-on-surface">96</span>
+<div class="w-12 bg-surface-container rounded-full h-1.5 overflow-hidden hidden sm:block">
+<div class="bg-emerald-600 h-1.5 rounded-full" style="width: 96%"></div>
+</div>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 text-emerald-700 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-emerald-600" data-icon="check_circle" style="font-size: 16px;">check_circle</span>
+                  Clean citation check
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">12m ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors">
+                  View Dossier
+                </button>
+</td>
+</tr>
+<!-- Row 2: Rank #2 Priya Patel -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input checked="" class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface">#2</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-secondary font-bold text-label-sm flex items-center justify-center font-mono">
+                    PP
+                  </div>
+<span class="font-semibold text-on-surface">priya.patel.dev@cloudmail.io</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Scored
+                </span>
+</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<span class="font-mono text-headline-sm font-bold text-on-surface">93</span>
+<div class="w-12 bg-surface-container rounded-full h-1.5 overflow-hidden hidden sm:block">
+<div class="bg-emerald-600 h-1.5 rounded-full" style="width: 93%"></div>
+</div>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 text-emerald-700 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-emerald-600" data-icon="check_circle" style="font-size: 16px;">check_circle</span>
+                  Clean
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">28m ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors">
+                  View Dossier
+                </button>
+</td>
+</tr>
+<!-- Row 3: Rank #3 Alex Vance -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input checked="" class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface">#3</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-secondary font-bold text-label-sm flex items-center justify-center font-mono">
+                    AV
+                  </div>
+<span class="font-semibold text-on-surface">alex.vance@techcorp.net</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Scored
+                </span>
+</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<span class="font-mono text-headline-sm font-bold text-on-surface">88</span>
+<div class="w-12 bg-surface-container rounded-full h-1.5 overflow-hidden hidden sm:block">
+<div class="bg-emerald-600 h-1.5 rounded-full" style="width: 88%"></div>
+</div>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-300 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-amber-700" data-icon="warning" style="font-size: 15px;">warning</span>
+                  Citation mismatch
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">45m ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors">
+                  View Dossier
+                </button>
+</td>
+</tr>
+<!-- Row 4: Rank #4 Jordan Taylor -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input checked="" class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface">#4</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-secondary font-bold text-label-sm flex items-center justify-center font-mono">
+                    JT
+                  </div>
+<span class="font-semibold text-on-surface">jordan.taylor@inbox.org</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                  Scored
+                </span>
+</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<span class="font-mono text-headline-sm font-bold text-on-surface">84</span>
+<div class="w-12 bg-surface-container rounded-full h-1.5 overflow-hidden hidden sm:block">
+<div class="bg-emerald-600 h-1.5 rounded-full" style="width: 84%"></div>
+</div>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-rose-800 border border-rose-200 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-rose-600" data-icon="security" style="font-size: 15px;">security</span>
+                  Potential prompt injection pattern detected
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">1h ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors">
+                  Review Flag
+                </button>
+</td>
+</tr>
+<!-- Row 5: Rank #5 Devon Blake (Processing) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface-variant">#5</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-on-surface-variant font-bold text-label-sm flex items-center justify-center font-mono">
+                    DB
+                  </div>
+<span class="font-medium text-on-surface">devon.blake@engineer.com</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-sky-50 text-secondary border border-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
+                  Processing
+                </span>
+</td>
+<td class="px-4 font-mono text-on-surface-variant">—</td>
+<td class="px-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant italic">Parsing AST &amp; work history...</span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">3m ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant/50 text-on-surface-variant opacity-60 cursor-not-allowed font-label-sm text-label-sm" disabled="">
+                  Queued
+                </button>
+</td>
+</tr>
+<!-- Row 6: Rank #6 Samira K (Processing) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface-variant">#6</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-on-surface-variant font-bold text-label-sm flex items-center justify-center font-mono">
+                    SK
+                  </div>
+<span class="font-medium text-on-surface">samira.k@workmail.com</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-sky-50 text-secondary border border-secondary-fixed font-label-sm text-label-sm font-semibold">
+<span class="w-3 h-3 border-2 border-secondary border-t-transparent rounded-full animate-spin"></span>
+                  Processing
+                </span>
+</td>
+<td class="px-4 font-mono text-on-surface-variant">—</td>
+<td class="px-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant italic">Extracting system architecture evidence...</span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">1m ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant/50 text-on-surface-variant opacity-60 cursor-not-allowed font-label-sm text-label-sm" disabled="">
+                  Queued
+                </button>
+</td>
+</tr>
+<!-- Row 7: Rank #7 Lucas Meyer (Refused) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface-variant">#7</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-on-surface-variant font-bold text-label-sm flex items-center justify-center font-mono">
+                    LM
+                  </div>
+<span class="font-medium text-on-surface">lucas.meyer@domain.de</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant border border-outline-variant font-label-sm text-label-sm font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>
+                  Refused
+                </span>
+</td>
+<td class="px-4 font-mono text-on-surface-variant">—</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-surface text-on-surface-variant border border-outline-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-outline" data-icon="translate" style="font-size: 15px;">translate</span>
+                  Non-English language resume
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">2h ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-outline-variant hover:border-on-surface text-on-surface font-label-sm text-label-sm transition-colors">
+                  Details
+                </button>
+</td>
+</tr>
+<!-- Row 8: Rank #8 Elena Rostova (Failed) -->
+<tr class="hover:bg-surface-container-low/50 transition-colors duration-150 h-[52px]">
+<td class="px-4 text-center">
+<input class="row-checkbox rounded border-outline-variant text-primary focus:ring-secondary h-4 w-4" type="checkbox"/>
+</td>
+<td class="px-4 font-mono font-bold text-on-surface-variant">#8</td>
+<td class="px-4">
+<div class="flex items-center gap-2">
+<div class="w-6 h-6 rounded-full bg-surface-container text-error font-bold text-label-sm flex items-center justify-center font-mono">
+                    ER
+                  </div>
+<span class="font-medium text-on-surface">elena.rostova@fastmail.com</span>
+</div>
+</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-error-container/60 text-error border border-error-container font-label-sm text-label-sm font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+                  Failed
+                </span>
+</td>
+<td class="px-4 font-mono text-on-surface-variant">—</td>
+<td class="px-4">
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-rose-50 text-error border border-rose-200 font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-error" data-icon="report" style="font-size: 15px;">report</span>
+                  Scoring failed / OCR timeout
+                </span>
+</td>
+<td class="px-4 text-on-surface-variant font-label-md text-label-md">3h ago</td>
+<td class="px-4 text-right">
+<button class="px-2.5 py-1 rounded bg-surface border border-error/40 hover:bg-error-container/40 text-error font-label-sm text-label-sm font-medium transition-colors inline-flex items-center gap-1" onclick="rescoreCandidate('elena.rostova@fastmail.com')">
+<span class="material-symbols-outlined" data-icon="refresh" style="font-size: 14px;">refresh</span>
+                  Rescore
+                </button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Table Footer / Pagination -->
+<div class="px-space-md py-space-sm bg-surface border-t border-outline-variant flex flex-col sm:flex-row items-center justify-between gap-space-sm text-on-surface-variant font-label-sm text-label-sm">
+<div>
+          Showing <span class="font-semibold text-on-surface">1 - 8</span> of <span class="font-semibold text-on-surface">192</span> applications for this position
+        </div>
+<div class="flex items-center gap-1">
+<button class="px-2 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface-variant opacity-50 cursor-not-allowed">
+            Previous
+          </button>
+<button class="px-2.5 py-1 rounded border border-secondary bg-surface-container text-secondary font-bold">1</button>
+<button class="px-2.5 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low">2</button>
+<button class="px-2.5 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low">3</button>
+<span class="px-1 text-on-surface-variant">...</span>
+<button class="px-2.5 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low">24</button>
+<button class="px-2 py-1 rounded border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low">
+            Next
+          </button>
+</div>
+</div>
+</div>
+<!-- Empty State View (Toggleable Preview) -->
+<div class="hidden bg-surface-container-lowest border border-outline-variant rounded-xl p-space-xl text-center shadow-sm flex flex-col items-center justify-center min-h-[380px]" id="emptyContainer">
+<div class="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-md">
+<span class="material-symbols-outlined" data-icon="person_search" style="font-size: 28px;">person_search</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface font-semibold mb-space-xs">No applications yet</h3>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-md mb-space-lg">
+        This requisition is active and ready to screen candidates. Distribute your custom link to begin processing applicants against the rubric.
+      </p>
+<div class="flex flex-wrap items-center justify-center gap-space-sm">
+<button class="inline-flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container transition-colors" onclick="copyApplyLink()">
+<span class="material-symbols-outlined" data-icon="share">share</span>
+          Share the apply link
+        </button>
+<button class="inline-flex items-center gap-1.5 px-space-md py-2 rounded-lg bg-surface border border-outline-variant text-on-surface font-label-md text-label-md hover:bg-surface-container transition-colors" onclick="toggleDataView('table')">
+          Return to Leaderboard
+        </button>
+</div>
+</div>
+</main>
+<!-- Modals & Overlays -->
+<!-- Edit Job Slide-Over / Preview Modal -->
+<div class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-[4px] z-50 hidden flex justify-end" id="editModal">
+<div class="bg-surface-container-lowest w-full max-w-lg h-full border-l border-outline-variant shadow-2xl flex flex-col justify-between overflow-y-auto">
+<div class="p-space-lg">
+<div class="flex items-center justify-between border-b border-outline-variant pb-space-md mb-space-lg">
+<div>
+<span class="font-label-sm text-label-sm text-secondary font-semibold uppercase">Requisition Config</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Edit Job Details</h2>
+</div>
+<button class="p-1 rounded-lg hover:bg-surface-container text-on-surface-variant" onclick="closeModal('editModal')">
+<span class="material-symbols-outlined" data-icon="close">close</span>
+</button>
+</div>
+<form class="space-y-space-md" onsubmit="event.preventDefault(); closeModal('editModal');">
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Job Title</label>
+<input class="w-full rounded-lg border-outline-variant text-body-md font-body-md focus:border-secondary focus:ring-0" type="text" value="Senior Backend Engineer (Distributed Systems)"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Department</label>
+<input class="w-full rounded-lg border-outline-variant text-body-md font-body-md focus:border-secondary focus:ring-0" type="text" value="Core Infrastructure &amp; Reliability"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Minimum Benchmark Score</label>
+<input class="w-full rounded-lg border-outline-variant text-body-md font-body-md focus:border-secondary focus:ring-0" type="number" value="75"/>
+<p class="font-label-sm text-label-sm text-on-surface-variant mt-1">Candidates scoring below 75 will not be flagged as top matches.</p>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Algorithmic Rubric Weights</label>
+<div class="p-space-sm bg-surface rounded-lg border border-outline-variant space-y-2">
+<div class="flex justify-between text-label-sm font-label-sm">
+<span>Distributed Consensus (Raft/Paxos)</span>
+<span class="font-bold">35%</span>
+</div>
+<div class="flex justify-between text-label-sm font-label-sm">
+<span>Go / Rust Concurrency</span>
+<span class="font-bold">35%</span>
+</div>
+<div class="flex justify-between text-label-sm font-label-sm">
+<span>Production Observability &amp; SLA</span>
+<span class="font-bold">30%</span>
+</div>
+</div>
+</div>
+</form>
+</div>
+<div class="p-space-md border-t border-outline-variant bg-surface flex justify-end gap-space-sm">
+<button class="px-space-md py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-md text-label-md hover:bg-surface-container" onclick="closeModal('editModal')">
+          Cancel
+        </button>
+<button class="px-space-md py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container" onclick="closeModal('editModal')">
+          Save Changes
+        </button>
+</div>
+</div>
+</div>
+<!-- Close Job Danger Alert Modal -->
+<div class="fixed inset-0 bg-inverse-surface/40 backdrop-blur-[4px] z-50 hidden flex items-center justify-center p-space-md" id="closeJobModal">
+<div class="bg-surface-container-lowest max-w-md w-full rounded-xl border border-outline-variant shadow-2xl p-space-lg flex flex-col gap-space-md">
+<div class="flex items-center gap-space-sm text-error">
+<div class="w-10 h-10 rounded-full bg-error-container/50 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-error" data-icon="warning">warning</span>
+</div>
+<div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Close this Job Requisition?</h3>
+<span class="font-label-sm text-label-sm text-error font-medium">Irreversible action</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+        Closing will reject incoming applicant traffic. <span class="font-semibold text-on-surface">Stops new applications and starts the retention clock</span> for candidate dossier data compliance (90-day archive schedule).
+      </p>
+<div class="flex items-center justify-end gap-space-sm mt-space-sm">
+<button class="px-space-md py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-label-md text-label-md hover:bg-surface-container" onclick="closeModal('closeJobModal')">
+          Nevermind
+        </button>
+<button class="px-space-md py-1.5 rounded-lg bg-error text-on-error font-label-md text-label-md hover:bg-on-error-container transition-colors shadow-sm" onclick="confirmCloseJob()">
+          Confirm &amp; Close Job
+        </button>
+</div>
+</div>
+</div>
+<!-- Floating Toast Feedback for Copy/Actions -->
+<div class="fixed bottom-6 right-6 bg-inverse-surface text-inverse-on-surface px-space-md py-space-sm rounded-lg shadow-xl font-label-md text-label-md flex items-center gap-2 transform translate-y-20 opacity-0 pointer-events-none transition-all duration-300 z-50" id="toastMessage">
+<span class="material-symbols-outlined text-emerald-400" data-icon="check_circle">check_circle</span>
+<span id="toastText">Apply link copied to clipboard!</span>
+</div>
+<!-- Micro-interactions Script -->
+<script>
+    function copyApplyLink() {
+      const linkText = document.getElementById('applyLinkText').innerText;
+      navigator.clipboard.writeText(linkText).then(() => {
+        const copyBtnText = document.getElementById('copyBtnText');
+        const originalText = copyBtnText.innerText;
+        copyBtnText.innerText = 'Copied!';
+        showToast('Copied public candidate link to clipboard!');
+        setTimeout(() => {
+          copyBtnText.innerText = originalText;
+        }, 2200);
+      }).catch(() => {
+        showToast('Link ready: ' + linkText);
+      });
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastMessage');
+      const toastText = document.getElementById('toastText');
+      toastText.innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+      setTimeout(() => {
+        toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+      }, 2600);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function confirmCloseJob() {
+      closeModal('closeJobModal');
+      showToast('Requisition marked closed. Retention clock initiated.');
+    }
+
+    function rescoreCandidate(email) {
+      showToast('Re-triggering AST extraction and rubric scorecard for ' + email);
+    }
+
+    function toggleDataView(mode) {
+      const table = document.getElementById('tableContainer');
+      const empty = document.getElementById('emptyContainer');
+      const tableBtn = document.getElementById('viewTableBtn');
+      const emptyBtn = document.getElementById('viewEmptyBtn');
+
+      if (mode === 'empty') {
+        table.classList.add('hidden');
+        empty.classList.remove('hidden');
+        emptyBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+        emptyBtn.classList.remove('text-on-surface-variant');
+        tableBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+        tableBtn.classList.add('text-on-surface-variant');
+      } else {
+        table.classList.remove('hidden');
+        empty.classList.add('hidden');
+        tableBtn.classList.add('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+        tableBtn.classList.remove('text-on-surface-variant');
+        emptyBtn.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'font-semibold', 'shadow-xs');
+        emptyBtn.classList.add('text-on-surface-variant');
+      }
+    }
+
+    function triggerDownload() {
+      const isTopN = document.querySelector('input[name="exportMode"]:checked').value === 'topN';
+      const count = isTopN ? document.getElementById('topNInput').value : document.getElementById('selectedCount').innerText;
+      showToast(`Generating audited CSV for ${count} candidate dossiers...`);
+    }
+
+    // Checkbox synchronization for selected count
+    document.getElementById('selectAllCheckbox').addEventListener('change', function(e) {
+      const rows = document.querySelectorAll('.row-checkbox');
+      rows.forEach(r => r.checked = e.target.checked);
+      updateSelectedCount();
+    });
+
+    document.querySelectorAll('.row-checkbox').forEach(cb => {
+      cb.addEventListener('change', updateSelectedCount);
+    });
+
+    function updateSelectedCount() {
+      const checkedCount = document.querySelectorAll('.row-checkbox:checked').length;
+      document.getElementById('selectedCount').innerText = checkedCount;
+    }
+  </script>
+</body></html>

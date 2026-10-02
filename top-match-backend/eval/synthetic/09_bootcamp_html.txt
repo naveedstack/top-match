@@ -1,0 +1,4 @@
+Avery Kim
+Career changer
+
+Completed a 12-week bootcamp covering HTML, CSS, and JavaScript. Built a static portfolio site. No Python, no FastAPI, no PostgreSQL, no production backend experience.

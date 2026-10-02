@@ -1,0 +1,4 @@
+Chris Donovan
+Account Manager
+
+Enterprise software sales for nine years. Exceeded quota, managed a $4M book of business, and coordinated customer onboarding. No Python, no FastAPI, no PostgreSQL, no production backend experience.

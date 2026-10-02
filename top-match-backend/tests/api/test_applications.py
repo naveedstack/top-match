@@ -35,7 +35,7 @@ async def _apply(
         file_id = UUID(uploaded.json()["id"])
     return await client.post(
         f"{settings.API_V1_STR}/public/jobs/{slug}/applications",
-        json={"email": email, "file_id": str(file_id)},
+        json={"email": email, "file_id": str(file_id), "consented": True},
     )
 
 

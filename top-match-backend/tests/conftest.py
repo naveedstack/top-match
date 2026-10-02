@@ -37,6 +37,11 @@ def disable_rate_limiter() -> Iterator[None]:
     limiter.enabled = was_enabled
 
 
+@pytest.fixture(autouse=True)
+def disable_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "PIPELINE_ENABLED", False)
+
+
 @pytest.fixture
 async def db_session() -> AsyncIterator[AsyncSession]:
     async with engine.connect() as connection:

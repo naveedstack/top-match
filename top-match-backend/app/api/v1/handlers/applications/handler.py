@@ -1,9 +1,17 @@
+from uuid import UUID
+
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import InvalidResumeError, ResumeTooLargeError
-from app.schemas.applications import ApplicationAccepted, ApplicationCreate, ResumeUploaded
+from app.models import Recruiter
+from app.schemas.applications import (
+    ApplicationAccepted,
+    ApplicationCreate,
+    ApplicationDetailResponse,
+    ResumeUploaded,
+)
 from app.services import applications as applications_service
 
 _ALLOWED_UPLOAD_TYPES = {"application/pdf", "application/octet-stream"}
@@ -34,3 +42,20 @@ async def upload_resume(request: Request) -> ResumeUploaded:
 async def apply_to_job(db: AsyncSession, slug: str, body: ApplicationCreate) -> ApplicationAccepted:
     application = await applications_service.apply_to_job(db, slug, str(body.email), body.file_id)
     return ApplicationAccepted(id=application.id, status=application.status)
+
+
+async def get_application(
+    db: AsyncSession, recruiter: Recruiter, application_id: UUID
+) -> ApplicationDetailResponse:
+    return await applications_service.get_owned_detail(db, application_id, recruiter.id)
+
+
+async def rescore_application(
+    db: AsyncSession, recruiter: Recruiter, application_id: UUID
+) -> ApplicationAccepted:
+    application = await applications_service.rescore(db, application_id, recruiter)
+    return ApplicationAccepted(id=application.id, status=application.status)
+
+
+async def get_resume_pdf(db: AsyncSession, token: str) -> bytes:
+    return await applications_service.get_resume_pdf(db, token)

@@ -1,0 +1,4 @@
+Riley Chen
+Python Engineer
+
+Four years of Django and Celery. Recently completed a FastAPI side project that talks to PostgreSQL. Production experience is mostly Django monoliths. Learning API design patterns for async services.

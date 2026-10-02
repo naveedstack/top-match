@@ -1,0 +1,4 @@
+Morgan Blake
+Web Developer
+
+Three years of Python scripts and Flask apps. Stored data in MySQL. No FastAPI. Limited production backend experience beyond a single Heroku app. Has not designed public APIs.

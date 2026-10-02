@@ -3,9 +3,16 @@
 Recruiters create a job (title, description, requirements) and receive a non-guessable
 `public_slug` plus `public_url` for LinkedIn/Indeed. They can list and edit their own
 jobs, inspect application counts, and close a job (sets `closed_at`, stops new applies).
-The public GET is unauthenticated and returns only title, description, requirements, and
-status so the candidate apply page can render. Recruiter routes look up by `id` and
+The public GET is unauthenticated and returns title, description, requirements, status,
+and the privacy / AI-screening notices plus the hiring-law disclaimer so the candidate
+apply page can render them. Recruiter routes look up by `id` and
 `recruiter_id`; another recruiter's job is 404, not 403.
+
+The leaderboard is polled (no SSE). Items are sorted by `score` descending, nulls last,
+then `created_at`. `counts` always cover every status on the job, even when `status` is
+filtered. Job detail and leaderboard include `screening_disclaimer`. CSV export takes
+either `application_ids` or `top_n`. The first CSV row is the disclaimer; cells that
+start with `=`, `+`, `-`, `@`, tab, or carriage return are prefixed with `'`.
 
 With a registered company account, recruiter routes require
 `Authorization: Bearer {{token}}` using the access JWT from `/api/v1/auth/register` or
@@ -17,9 +24,9 @@ With a registered company account, recruiter routes require
 ### Create Job
 
 ```http
-POST {{host}}/api/v1/jobs HTTP/1.1
+POST http://127.0.0.1:8000/api/v1/jobs HTTP/1.1
 content-type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1N2Q2YWRjOS1lY2M0LTQ1MzYtYjMxNS1jM2Q5ZjhkYTMzOWEiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzkwOTM0NDQxLCJleHAiOjE3OTA5MzUzNDF9.HS48BSglTJa37Nid1dGKaq69i2V8w6jFhtALddxHiIc
 
 {
   "title": "Senior Backend Engineer",
@@ -80,5 +87,36 @@ GET {{host}}/api/v1/public/jobs/{{slug}} HTTP/1.1
 content-type: application/json
 
 {
+}
+```
+
+### Get Leaderboard
+
+```http
+GET {{host}}/api/v1/jobs/{{jobId}}/leaderboard?limit=50&offset=0 HTTP/1.1
+Authorization: Bearer {{token}}
+```
+
+### Export CSV (top N)
+
+```http
+POST {{host}}/api/v1/jobs/{{jobId}}/exports HTTP/1.1
+content-type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "top_n": 20
+}
+```
+
+### Export CSV (selected ids)
+
+```http
+POST {{host}}/api/v1/jobs/{{jobId}}/exports HTTP/1.1
+content-type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "application_ids": ["{{applicationId}}"]
 }
 ```

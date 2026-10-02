@@ -1,0 +1,4 @@
+Sam Patel
+Backend Engineer
+
+Five years of Python. Shipped REST APIs with FastAPI and SQLAlchemy. Used PostgreSQL for user and order tables. Some production backend experience at a mid-size SaaS company. Limited exposure to high-scale API design.

@@ -6,12 +6,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.exceptions import JobNotFoundError
+from app.core.notices import AI_SCREENING_NOTICE, SCREENING_DISCLAIMER, privacy_notice
 from app.models import Job, JobStatus, Recruiter
 from app.repositories import jobs as jobs_repo
 from app.schemas.jobs import (
     ApplicationCounts,
     JobCreate,
     JobDetailResponse,
+    JobListItemResponse,
     JobResponse,
     JobUpdate,
     PublicJobResponse,
@@ -44,6 +46,9 @@ def to_public_response(job: Job) -> PublicJobResponse:
         description=job.description,
         requirements=job.requirements,
         status=job.status,
+        privacy_notice=privacy_notice(),
+        ai_screening_notice=AI_SCREENING_NOTICE,
+        screening_disclaimer=SCREENING_DISCLAIMER,
     )
 
 
@@ -81,6 +86,22 @@ async def list_jobs(session: AsyncSession, recruiter_id: UUID) -> list[Job]:
     return await jobs_repo.list_for_recruiter(session, recruiter_id)
 
 
+async def list_jobs_with_counts(
+    session: AsyncSession, recruiter_id: UUID
+) -> list[JobListItemResponse]:
+    jobs = await list_jobs(session, recruiter_id)
+    counts_by_job = await jobs_repo.count_applications_by_status_for_jobs(
+        session, [job.id for job in jobs]
+    )
+    return [
+        JobListItemResponse(
+            **to_job_response(job).model_dump(),
+            application_counts=ApplicationCounts.from_status_map(counts_by_job[job.id]),
+        )
+        for job in jobs
+    ]
+
+
 async def get_job_detail(
     session: AsyncSession, job_id: UUID, recruiter_id: UUID
 ) -> JobDetailResponse:
@@ -89,6 +110,7 @@ async def get_job_detail(
     return JobDetailResponse(
         **to_job_response(job).model_dump(),
         application_counts=ApplicationCounts.from_status_map(counts),
+        screening_disclaimer=SCREENING_DISCLAIMER,
     )
 
 

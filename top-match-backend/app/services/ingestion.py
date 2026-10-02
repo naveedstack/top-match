@@ -7,7 +7,7 @@ import pytesseract
 
 from app.integrations import pdf as pdf_lib
 
-_EMPTY_CHAR_THRESHOLD = 40
+EMPTY_CHAR_THRESHOLD = 40
 
 
 @dataclass(frozen=True)
@@ -37,7 +37,7 @@ def _extract_sync(pdf_bytes: bytes) -> IngestionResult:
         text=text,
         page_count=len(images),
         duration_ms=duration_ms,
-        too_empty=len(text) < _EMPTY_CHAR_THRESHOLD,
+        too_empty=len(text) < EMPTY_CHAR_THRESHOLD,
     )
 
 

@@ -1,11 +1,11 @@
 import secrets
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.models import Job, JobStatus, Recruiter
+from app.models import Application, ApplicationStatus, Job, JobStatus, Recruiter
 
 JOB_BODY = {
     "title": "Senior Engineer",
@@ -59,6 +59,51 @@ async def test_list_jobs_is_scoped_to_current_recruiter(
     jobs = response.json()
     assert len(jobs) == 1
     assert jobs[0]["id"] == created["id"]
+    assert jobs[0]["application_counts"] == {
+        "received": 0,
+        "processing": 0,
+        "scored": 0,
+        "refused": 0,
+        "failed": 0,
+    }
+
+
+async def test_list_jobs_includes_application_counts(
+    client: AsyncClient,
+    db_session: AsyncSession,
+) -> None:
+    created = await _create_job(client)
+    job_id = UUID(str(created["id"]))
+    statuses = [
+        ApplicationStatus.RECEIVED,
+        ApplicationStatus.RECEIVED,
+        ApplicationStatus.PROCESSING,
+        ApplicationStatus.SCORED,
+        ApplicationStatus.REFUSED,
+        ApplicationStatus.FAILED,
+    ]
+    for index, status in enumerate(statuses):
+        db_session.add(
+            Application(
+                job_id=job_id,
+                email=f"candidate{index}@example.com",
+                status=status,
+            )
+        )
+    await db_session.flush()
+
+    response = await client.get(f"{settings.API_V1_STR}/jobs")
+
+    assert response.status_code == 200
+    jobs = response.json()
+    assert len(jobs) == 1
+    assert jobs[0]["application_counts"] == {
+        "received": 2,
+        "processing": 1,
+        "scored": 1,
+        "refused": 1,
+        "failed": 1,
+    }
 
 
 async def test_job_detail_includes_zero_application_counts(client: AsyncClient) -> None:
@@ -106,12 +151,19 @@ async def test_public_job_returns_only_public_fields(client: AsyncClient) -> Non
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {
-        "title": JOB_BODY["title"],
-        "description": JOB_BODY["description"],
-        "requirements": JOB_BODY["requirements"],
-        "status": "open",
+    assert set(body) == {
+        "title",
+        "description",
+        "requirements",
+        "status",
+        "privacy_notice",
+        "ai_screening_notice",
+        "screening_disclaimer",
     }
+    assert body["title"] == JOB_BODY["title"]
+    assert body["description"] == JOB_BODY["description"]
+    assert body["requirements"] == JOB_BODY["requirements"]
+    assert body["status"] == "open"
 
 
 async def test_unknown_public_slug_is_not_found(client: AsyncClient) -> None:

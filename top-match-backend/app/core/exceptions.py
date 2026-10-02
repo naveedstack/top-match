@@ -40,3 +40,11 @@ class InvalidResumeError(Exception):
     def __init__(self, message: str = "Invalid resume") -> None:
         self.message = message
         super().__init__(message)
+
+
+class EvaluationFailedError(Exception):
+    """Raised when Gemini evaluation fails after retries."""
+
+
+class ApplicationNotFoundError(Exception):
+    """Raised when an application is missing or is not owned by the current recruiter."""

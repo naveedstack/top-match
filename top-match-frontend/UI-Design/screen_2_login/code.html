@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Log in - Top Match</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "surface-container-high": "#dce9ff",
+            "secondary-fixed-dim": "#93ccff",
+            "error-container": "#ffdad6",
+            "on-tertiary-fixed-variant": "#005049",
+            "surface-dim": "#cbdbf5",
+            "on-error-container": "#93000a",
+            "tertiary": "#000000",
+            "primary-container": "#131b2e",
+            "on-surface-variant": "#45464d",
+            "inverse-surface": "#213145",
+            "surface-bright": "#f8f9ff",
+            "tertiary-container": "#00201d",
+            "on-error": "#ffffff",
+            "on-background": "#0b1c30",
+            "tertiary-fixed-dim": "#6bd8cb",
+            "surface-container-lowest": "#ffffff",
+            "on-tertiary-container": "#0c9488",
+            "on-primary-container": "#7c839b",
+            "on-primary-fixed": "#131b2e",
+            "on-primary": "#ffffff",
+            "primary": "#000000",
+            "primary-fixed-dim": "#bec6e0",
+            "primary-fixed": "#dae2fd",
+            "secondary-container": "#5bb8fe",
+            "background": "#f8f9ff",
+            "surface-container-highest": "#d3e4fe",
+            "surface-container": "#e5eeff",
+            "on-primary-fixed-variant": "#3f465c",
+            "on-secondary-container": "#00476e",
+            "inverse-primary": "#bec6e0",
+            "on-secondary-fixed-variant": "#004b73",
+            "inverse-on-surface": "#eaf1ff",
+            "error": "#ba1a1a",
+            "surface-tint": "#565e74",
+            "tertiary-fixed": "#89f5e7",
+            "surface": "#f8f9ff",
+            "on-tertiary-fixed": "#00201d",
+            "secondary": "#006398",
+            "surface-container-low": "#eff4ff",
+            "outline-variant": "#c6c6cd",
+            "on-surface": "#0b1c30",
+            "outline": "#76777d",
+            "on-secondary": "#ffffff",
+            "on-secondary-fixed": "#001d31",
+            "on-tertiary": "#ffffff",
+            "surface-variant": "#d3e4fe",
+            "secondary-fixed": "#cce5ff"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "margin-sm": "1rem",
+            "space-lg": "1.5rem",
+            "space-xs": "0.25rem",
+            "margin": "2rem",
+            "gutter-sm": "1rem",
+            "space-sm": "0.5rem",
+            "gutter": "1.5rem",
+            "space-md": "1rem",
+            "space-xl": "2rem"
+          },
+          "fontFamily": {
+            "body-md": ["Inter"],
+            "label-md": ["Inter"],
+            "headline-sm": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-lg-mobile": ["Inter"],
+            "body-lg": ["Inter"],
+            "headline-md": ["Inter"],
+            "headline-lg": ["Inter"],
+            "headline-xl": ["Inter"],
+            "label-lg": ["Inter"],
+            "label-sm": ["Inter"],
+            "headline-xl-mobile": ["Inter"]
+          },
+          "fontSize": {
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-lg-mobile": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }],
+            "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "500" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }],
+            "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }]
+          }
+        },
+      },
+    }
+  </script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col justify-between selection:bg-secondary-fixed selection:text-on-secondary-fixed antialiased font-body-md text-body-md">
+<div class="absolute inset-x-0 top-0 h-1 bg-surface-container-high z-10"></div>
+<main class="flex-1 flex flex-col items-center justify-center px-margin-sm py-space-xl sm:px-margin">
+<div class="w-full max-w-md flex flex-col items-center">
+<!-- Brand Anchor Header -->
+<div class="text-center mb-space-lg">
+<div class="inline-flex items-center justify-center gap-space-xs mb-space-xs">
+<div class="w-7 h-7 rounded-lg bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-lg leading-none" data-icon="fact_check">fact_check</span>
+</div>
+<span class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Top Match</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant font-medium">AI resume-screening middleware. Not an ATS.</p>
+</div>
+<!-- Auth Card Form -->
+<div class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-6 sm:p-8 shadow-sm">
+<div class="mb-space-md">
+<h1 class="font-headline-md text-headline-md font-semibold text-on-surface tracking-tight">Welcome back</h1>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">Sign in to access your company screening pipelines.</p>
+</div>
+<!-- Generic Error Banner (Compliance Spec: Never disclose which field is invalid) -->
+<div class="hidden mb-space-md p-space-sm bg-error-container/60 border border-error/30 rounded-lg flex items-start gap-space-sm transition-all" id="auth-error-alert" role="alert">
+<span class="material-symbols-outlined text-error text-lg flex-shrink-0 mt-0.5" data-icon="error">error</span>
+<p class="font-body-sm text-body-sm text-on-error-container">Invalid email or password. Please verify your credentials and try again.</p>
+</div>
+<form class="space-y-space-md" id="login-form" novalidate="" onsubmit="handleLoginSubmit(event)">
+<!-- Email Field -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1.5" for="work-email">
+              Work email <span aria-hidden="true" class="text-error">*</span>
+</label>
+<div class="relative">
+<input autocomplete="email" class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-body-md text-body-md rounded-lg px-3.5 py-2.5 outline-none transition duration-150 focus:border-secondary focus:ring-2 focus:ring-secondary/20 placeholder:text-outline" id="work-email" placeholder="recruiter@acme.com" required="" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div>
+<label class="block font-label-md text-label-md text-on-surface font-medium mb-1.5" for="password-input">
+              Password <span aria-hidden="true" class="text-error">*</span>
+</label>
+<div class="relative">
+<input autocomplete="current-password" class="w-full bg-surface-container-lowest border border-outline-variant text-on-surface font-body-md text-body-md rounded-lg pl-3.5 pr-10 py-2.5 outline-none transition duration-150 focus:border-secondary focus:ring-2 focus:ring-secondary/20" id="password-input" required="" type="password"/>
+<button aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 pr-3 flex items-center text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none" id="toggle-password-btn" onclick="togglePasswordVisibility()" type="button">
+<span class="material-symbols-outlined text-xl" data-icon="visibility" id="eye-icon">visibility</span>
+</button>
+</div>
+<!-- Explicit requirement check: NO 'Forgot password' link for v1 -->
+</div>
+<!-- Submit Button -->
+<div class="pt-1">
+<button class="w-full h-11 bg-primary text-on-primary font-label-lg text-label-lg rounded-lg hover:bg-inverse-surface active:bg-primary-container transition-all duration-150 flex items-center justify-center gap-space-xs font-semibold focus:outline-none focus:ring-2 focus:ring-secondary focus:ring-offset-2" type="submit">
+<span>Log in</span>
+<span class="material-symbols-outlined text-lg" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</form>
+<!-- Form Switcher -->
+<div class="mt-space-md pt-space-md border-t border-outline-variant text-center">
+<p class="font-body-sm text-body-sm text-on-surface-variant">
+            Need an account? 
+            <a class="font-label-md text-label-md text-secondary hover:underline font-semibold focus:outline-none focus:ring-1 focus:ring-secondary rounded" href="/register">Register</a>
+</p>
+</div>
+</div>
+<!-- Demo Trigger for Audit/Testing Verification -->
+<div class="mt-4 flex items-center justify-center">
+<button class="font-label-sm text-label-sm text-outline hover:text-on-surface-variant transition-colors flex items-center gap-1 cursor-pointer focus:outline-none" onclick="toggleErrorDemo()" title="Audit Preview: Click to toggle failure state simulation" type="button">
+<span class="material-symbols-outlined text-sm" data-icon="bug_report">bug_report</span>
+<span>Toggle Error State</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Trust Signals Footer -->
+<footer class="w-full py-space-md border-t border-outline-variant bg-surface text-center">
+<div class="max-w-4xl mx-auto px-margin-sm flex flex-col sm:flex-row items-center justify-center gap-2 text-on-surface-variant font-label-sm text-label-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="lock">lock</span>
+<span>Protected by enterprise AES-256 encryption</span>
+</div>
+<span class="hidden sm:inline text-outline">•</span>
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-sm text-secondary" data-icon="verified_user">verified_user</span>
+<span>SOC 2 Type II Certified</span>
+</div>
+</div>
+</footer>
+<script>
+    function togglePasswordVisibility() {
+      const passwordInput = document.getElementById('password-input');
+      const eyeIcon = document.getElementById('eye-icon');
+      if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        eyeIcon.textContent = 'visibility_off';
+      } else {
+        passwordInput.type = 'password';
+        eyeIcon.textContent = 'visibility';
+      }
+    }
+
+    function toggleErrorDemo() {
+      const banner = document.getElementById('auth-error-alert');
+      banner.classList.toggle('hidden');
+    }
+
+    function handleLoginSubmit(event) {
+      event.preventDefault();
+      const email = document.getElementById('work-email').value.trim();
+      const password = document.getElementById('password-input').value;
+      const banner = document.getElementById('auth-error-alert');
+
+      // Intentional failure trigger or demo verification
+      if (!email || !password || email !== 'recruiter@acme.com') {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+  </script>
+</body></html>

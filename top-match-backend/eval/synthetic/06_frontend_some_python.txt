@@ -1,0 +1,4 @@
+Casey Nguyen
+Frontend Engineer
+
+React and TypeScript for five years. Wrote a few Python notebooks to transform CSV files. No FastAPI, no PostgreSQL, no production backend experience. Interested in learning API design.

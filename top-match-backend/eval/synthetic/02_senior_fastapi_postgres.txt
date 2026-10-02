@@ -1,0 +1,4 @@
+Jordan Lee
+Senior Backend Engineer
+
+Six years of Python. Built FastAPI microservices for checkout and inventory. Wrote PostgreSQL migrations, query plans, and backup runbooks. Strong production backend experience including incident response and SLOs. Comfortable owning API design for partner integrations.

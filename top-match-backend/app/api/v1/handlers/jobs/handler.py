@@ -2,14 +2,18 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Recruiter
+from app.models import ApplicationStatus, Recruiter
+from app.schemas.applications import ExportRequest, LeaderboardResponse
 from app.schemas.jobs import (
     JobCreate,
     JobDetailResponse,
+    JobListItemResponse,
     JobResponse,
     JobUpdate,
     PublicJobResponse,
 )
+from app.services import applications as applications_service
+from app.services import exports as exports_service
 from app.services import jobs as jobs_service
 
 
@@ -18,9 +22,8 @@ async def create_job(db: AsyncSession, recruiter: Recruiter, body: JobCreate) ->
     return jobs_service.to_job_response(job)
 
 
-async def list_jobs(db: AsyncSession, recruiter: Recruiter) -> list[JobResponse]:
-    jobs = await jobs_service.list_jobs(db, recruiter.id)
-    return [jobs_service.to_job_response(job) for job in jobs]
+async def list_jobs(db: AsyncSession, recruiter: Recruiter) -> list[JobListItemResponse]:
+    return await jobs_service.list_jobs_with_counts(db, recruiter.id)
 
 
 async def get_job(db: AsyncSession, recruiter: Recruiter, job_id: UUID) -> JobDetailResponse:
@@ -42,3 +45,23 @@ async def close_job(db: AsyncSession, recruiter: Recruiter, job_id: UUID) -> Job
 async def get_public_job(db: AsyncSession, slug: str) -> PublicJobResponse:
     job = await jobs_service.get_public_job(db, slug)
     return jobs_service.to_public_response(job)
+
+
+async def get_leaderboard(
+    db: AsyncSession,
+    recruiter: Recruiter,
+    job_id: UUID,
+    status: ApplicationStatus | None,
+    limit: int,
+    offset: int,
+) -> LeaderboardResponse:
+    return await applications_service.get_leaderboard(
+        db, job_id, recruiter.id, status=status, limit=limit, offset=offset
+    )
+
+
+async def export_job(
+    db: AsyncSession, recruiter: Recruiter, job_id: UUID, body: ExportRequest
+) -> str:
+    content, _ids = await exports_service.export_job(db, job_id, recruiter, body)
+    return content

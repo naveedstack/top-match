@@ -1,0 +1,4 @@
+Jamie Ortiz
+Data Analyst
+
+SQL queries in PostgreSQL and dashboards in Tableau. Python used only for pandas cleaning scripts. No FastAPI. No production backend experience. No API design work.

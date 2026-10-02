@@ -1,0 +1,4 @@
+Taylor Brooks
+Java Backend Engineer
+
+Seven years of Java and Spring Boot. Designed REST APIs and used PostgreSQL at a bank. No Python and no FastAPI. Strong production backend experience in a different stack.

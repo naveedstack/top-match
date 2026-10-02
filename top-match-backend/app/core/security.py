@@ -77,6 +77,24 @@ def decode_refresh_token(token: str) -> tuple[UUID, str]:
     return _parse_sub(payload), jti
 
 
+def create_resume_token(application_id: UUID) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(application_id),
+        "type": "resume",
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.RESUME_TOKEN_MINUTES),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET.get_secret_value(), algorithm=_JWT_ALGORITHM)
+
+
+def decode_resume_token(token: str) -> UUID:
+    payload = _decode(token)
+    if payload.get("type") != "resume":
+        raise InvalidTokenError
+    return _parse_sub(payload)
+
+
 def _decode(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(

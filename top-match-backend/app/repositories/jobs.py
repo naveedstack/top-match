@@ -33,15 +33,28 @@ async def add(session: AsyncSession, job: Job) -> Job:
     return job
 
 
+def _empty_status_counts() -> dict[ApplicationStatus, int]:
+    return dict.fromkeys(ApplicationStatus, 0)
+
+
 async def count_applications_by_status(
     session: AsyncSession, job_id: UUID
 ) -> dict[ApplicationStatus, int]:
+    counts_by_job = await count_applications_by_status_for_jobs(session, [job_id])
+    return counts_by_job.get(job_id, _empty_status_counts())
+
+
+async def count_applications_by_status_for_jobs(
+    session: AsyncSession, job_ids: list[UUID]
+) -> dict[UUID, dict[ApplicationStatus, int]]:
+    counts_by_job = {job_id: _empty_status_counts() for job_id in job_ids}
+    if not job_ids:
+        return counts_by_job
     result = await session.execute(
-        select(Application.status, func.count())
-        .where(Application.job_id == job_id)
-        .group_by(Application.status)
+        select(Application.job_id, Application.status, func.count())
+        .where(Application.job_id.in_(job_ids))
+        .group_by(Application.job_id, Application.status)
     )
-    counts = dict.fromkeys(ApplicationStatus, 0)
-    for status, count in result.all():
-        counts[status] = count
-    return counts
+    for job_id, status, count in result.all():
+        counts_by_job[job_id][status] = count
+    return counts_by_job

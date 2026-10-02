@@ -69,8 +69,13 @@ class JobResponse(BaseModel):
     closed_at: datetime | None
 
 
+class JobListItemResponse(JobResponse):
+    application_counts: ApplicationCounts
+
+
 class JobDetailResponse(JobResponse):
     application_counts: ApplicationCounts
+    screening_disclaimer: str
 
 
 class PublicJobResponse(BaseModel):
@@ -78,3 +83,6 @@ class PublicJobResponse(BaseModel):
     description: str
     requirements: str
     status: JobStatus
+    privacy_notice: str
+    ai_screening_notice: str
+    screening_disclaimer: str

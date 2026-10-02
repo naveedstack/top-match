@@ -1,0 +1,21 @@
+{
+  "job": {
+    "title": "Senior Backend Engineer",
+    "description": "Build and operate the Top Match screening API. Own FastAPI services, PostgreSQL data model, and production reliability.",
+    "requirements": "Python, FastAPI, PostgreSQL, production backend experience, API design"
+  },
+  "resumes": [
+    {"id": "01_staff_python_fastapi", "file": "01_staff_python_fastapi.txt", "human_rank": 1},
+    {"id": "02_senior_fastapi_postgres", "file": "02_senior_fastapi_postgres.txt", "human_rank": 2},
+    {"id": "03_solid_python_api", "file": "03_solid_python_api.txt", "human_rank": 3},
+    {"id": "04_django_learning_fastapi", "file": "04_django_learning_fastapi.txt", "human_rank": 4},
+    {"id": "05_flask_mysql", "file": "05_flask_mysql.txt", "human_rank": 5},
+    {"id": "06_frontend_some_python", "file": "06_frontend_some_python.txt", "human_rank": 6},
+    {"id": "07_java_spring", "file": "07_java_spring.txt", "human_rank": 7},
+    {"id": "08_data_analyst", "file": "08_data_analyst.txt", "human_rank": 8},
+    {"id": "09_bootcamp_html", "file": "09_bootcamp_html.txt", "human_rank": 9},
+    {"id": "10_account_manager", "file": "10_account_manager.txt", "human_rank": 10}
+  ],
+  "non_resume": {"id": "non_resume_menu", "file": "non_resume_menu.txt"},
+  "injection": {"id": "injection_visible", "file": "injection_visible.txt"}
+}

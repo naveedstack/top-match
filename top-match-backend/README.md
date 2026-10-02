@@ -20,7 +20,8 @@ uvicorn app.main:app --reload
 - API docs: http://127.0.0.1:8000/docs
 - Liveness: `GET /api/v1/health`
 - Readiness (checks DB): `GET /api/v1/health/ready`
-- Apply: upload PDF with `POST /api/v1/public/files`, then JSON `POST /api/v1/public/jobs/{slug}/applications` with `{ "email", "file_id" }`
+- Apply: upload PDF with `POST /api/v1/public/files`, then JSON `POST /api/v1/public/jobs/{slug}/applications` with `{ "email", "file_id", "consented": true }`
+- Staging/production: set `GEMINI_DATA_USE_ACKNOWLEDGED=true` (paid-tier Gemini or Vertex AI only). API docs are disabled outside `ENVIRONMENT=local`.
 
 Request examples live next to each handler:
 

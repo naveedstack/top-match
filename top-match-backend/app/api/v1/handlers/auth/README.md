@@ -44,7 +44,7 @@ POST http://127.0.0.1:8000/api/v1/auth/refresh HTTP/1.1
 content-type: application/json
 
 {
-  "refresh_token": "{{refreshToken}}"
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1N2Q2YWRjOS1lY2M0LTQ1MzYtYjMxNS1jM2Q5ZjhkYTMzOWEiLCJ0eXBlIjoicmVmcmVzaCIsImp0aSI6IjE4NmEwZjA4LTliYmEtNGNmNi04MTVjLTA3ZTJlZDg2YjQ1NyIsImlhdCI6MTc5MDkzNDM3NywiZXhwIjoxNzkxNTM5MTc3fQ.3mpl-TBqxJT7s6zMAYJLbFZczb57dtGGyK9FUUmyz4Q"
 }
 ```
 
@@ -62,9 +62,9 @@ content-type: application/json
 ### Current Recruiter
 
 ```http
-GET {{host}}/api/v1/auth/me HTTP/1.1
+GET http://127.0.0.1:8000/api/v1/auth/me HTTP/1.1
 content-type: application/json
-Authorization: Bearer {{token}}
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1N2Q2YWRjOS1lY2M0LTQ1MzYtYjMxNS1jM2Q5ZjhkYTMzOWEiLCJ0eXBlIjoiYWNjZXNzIiwiaWF0IjoxNzkwOTM0NDQxLCJleHAiOjE3OTA5MzUzNDF9.HS48BSglTJa37Nid1dGKaq69i2V8w6jFhtALddxHiIc
 
 {
 }

@@ -1,0 +1,4 @@
+Alex Rivera
+Staff Backend Engineer
+
+Eight years of Python in production. Designed FastAPI services that handle 20k requests per minute. Modeled PostgreSQL schemas with partitioning and carefully designed indexes. Led API design reviews and onboarded four engineers. Operated on-call for billing and matching services.
