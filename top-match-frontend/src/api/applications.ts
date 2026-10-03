@@ -3,13 +3,35 @@ import type {
   ApplicationAccepted,
   ApplicationCreateRequest,
   ApplicationDetail,
+  ResumeUploadUrlResponse,
   ResumeUploaded,
 } from "@/types/applications";
 
+function putHeaders(headers: Record<string, string>): Headers {
+  const next = new Headers();
+  for (const [name, value] of Object.entries(headers)) {
+    if (name.toLowerCase() === "content-length") {
+      continue;
+    }
+    next.set(name, value);
+  }
+  return next;
+}
+
 export async function uploadResume(file: Blob): Promise<ResumeUploaded> {
-  const { data } = await api.post<ResumeUploaded>("/public/files", file, {
-    headers: { "Content-Type": "application/pdf" },
+  const { data: signed } = await api.post<ResumeUploadUrlResponse>("/public/files/upload-url", {
+    content_type: "application/pdf",
+    byte_size: file.size,
   });
+  const uploaded = await fetch(signed.upload_url, {
+    method: "PUT",
+    headers: putHeaders(signed.headers),
+    body: file,
+  });
+  if (!uploaded.ok) {
+    throw new Error("Could not upload resume");
+  }
+  const { data } = await api.post<ResumeUploaded>(`/public/files/${signed.file_id}/complete`);
   return data;
 }
 

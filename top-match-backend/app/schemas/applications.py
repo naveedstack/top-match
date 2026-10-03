@@ -19,6 +19,18 @@ class ResumeUploaded(BaseModel):
     id: UUID
 
 
+class UploadUrlRequest(BaseModel):
+    content_type: str
+    byte_size: int = Field(ge=1)
+
+
+class UploadUrlResponse(BaseModel):
+    file_id: UUID
+    upload_url: str
+    headers: dict[str, str]
+    expires_at: datetime
+
+
 class ApplicationAccepted(BaseModel):
     id: UUID
     status: ApplicationStatus

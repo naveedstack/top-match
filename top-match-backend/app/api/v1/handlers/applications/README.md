@@ -1,11 +1,17 @@
 # Applications
 
-The frontend uploads the PDF first, then creates an application with JSON only.
+The frontend asks the API for a short-lived PUT URL, uploads the PDF to storage,
+then confirms the object. Apply is JSON only.
 
-1. `POST /api/v1/public/files` sends the raw PDF (`content-type: application/pdf`) and
-   returns `{ "id": "<file_id>" }`. The API checks size, `%PDF-` magic bytes, encryption,
-   and page count, then stores the file.
-2. `POST /api/v1/public/jobs/{slug}/applications` sends
+1. `POST /api/v1/public/files/upload-url` sends `{ "content_type": "application/pdf",
+   "byte_size": N }` and returns `{ "file_id", "upload_url", "headers", "expires_at" }`.
+   Rejects non-PDF types and sizes over 5 MB.
+2. The browser `PUT`s the PDF to `upload_url` with the returned `headers` (S3 when
+   `STORAGE_BACKEND=s3`; a local API PUT when `STORAGE_BACKEND=local`).
+3. `POST /api/v1/public/files/{file_id}/complete` checks the object, validates the PDF
+   (magic bytes, readable, page count), and returns `{ "id": "<file_id>" }`. Invalid
+   objects are deleted.
+4. `POST /api/v1/public/jobs/{slug}/applications` sends
    `{ "email", "file_id", "consented": true }` as `application/json` and returns `202`
    with status `received`. `consented` must be true (privacy/AI notice on the public job).
    Duplicate emails for the same job return 409. A missing or already used `file_id`
@@ -18,18 +24,38 @@ to retry a `failed` row. `GET /api/v1/public/resumes/{token}` streams the PDF (n
 Bearer header). Another recruiter's application is 404.
 
 Replace `{{host}}` with `http://127.0.0.1:8000`, `{{slug}}` with the job `public_slug`,
-and `{{fileId}}` with the id from the upload response. Recruiter routes need
+and `{{fileId}}` with the id from the complete response. Recruiter routes need
 `Authorization: Bearer {{token}}`. Public apply and resume download do not.
 
 # List Endpoints
 
-### Upload Resume
+### Request Upload URL
 
 ```http
-POST {{host}}/api/v1/public/files HTTP/1.1
+POST {{host}}/api/v1/public/files/upload-url HTTP/1.1
+content-type: application/json
+
+{
+  "content_type": "application/pdf",
+  "byte_size": 102400
+}
+```
+
+### Put Resume (local storage)
+
+```http
+PUT {{host}}/api/v1/public/files/{{fileId}}/content HTTP/1.1
 content-type: application/pdf
 
 < /path/to/resume.pdf
+```
+
+When `STORAGE_BACKEND=s3`, PUT to the returned `upload_url` instead of this path.
+
+### Complete Upload
+
+```http
+POST {{host}}/api/v1/public/files/{{fileId}}/complete HTTP/1.1
 ```
 
 ### Apply To Job

@@ -314,7 +314,7 @@ Screens: [`UI-Design/screen_7_candidate_apply/code.html`](UI-Design/screen_7_can
 | Action     | Hook             | Endpoint                                      |
 | ---------- | ---------------- | --------------------------------------------- |
 | Public job | `usePublicJob`   | `GET /public/jobs/{slug}`                     |
-| Upload     | `useUploadResume`| `POST /public/files`                          |
+| Upload     | `useUploadResume`| `POST /public/files/upload-url` then PUT, then `POST /public/files/{id}/complete` |
 | Apply      | `useApply`       | `POST /public/jobs/{slug}/applications`       |
 
 ### Exit criteria

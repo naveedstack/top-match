@@ -125,7 +125,8 @@ into clean text.
 
 ### Apply endpoint — `POST /api/v1/public/jobs/{slug}/applications` (JSON: `email`, `file_id`)
 
-Frontend uploads the PDF first (`POST /api/v1/public/files`, raw `application/pdf` body),
+Frontend uploads the PDF first (`POST /api/v1/public/files/upload-url`, PUT to `upload_url`,
+then `POST /api/v1/public/files/{file_id}/complete`),
 then applies with JSON `{ "email", "file_id" }`. No multipart.
 
 1. Job exists and is `open`, otherwise `404` / `409`.

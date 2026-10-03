@@ -23,6 +23,7 @@ dependencies = [
     "pwdlib[argon2]>=0.3.1",
     "pyjwt>=2.15.1",
     "langchain-google-genai>=4.4.0",
+    "aioboto3>=15.5.0",
 ]
 
 [dependency-groups]
@@ -59,7 +60,19 @@ strict = true
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["pypdfium2", "pypdfium2.*", "pytesseract", "slowapi", "slowapi.*", "pwdlib", "pwdlib.*"]
+module = [
+    "pypdfium2",
+    "pypdfium2.*",
+    "pytesseract",
+    "slowapi",
+    "slowapi.*",
+    "pwdlib",
+    "pwdlib.*",
+    "aioboto3",
+    "aioboto3.*",
+    "botocore",
+    "botocore.*",
+]
 ignore_missing_imports = true
 
 [tool.pydantic-mypy]

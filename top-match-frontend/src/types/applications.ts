@@ -11,6 +11,18 @@ export type ResumeUploaded = {
   id: string;
 };
 
+export type ResumeUploadUrlRequest = {
+  content_type: "application/pdf";
+  byte_size: number;
+};
+
+export type ResumeUploadUrlResponse = {
+  file_id: string;
+  upload_url: string;
+  headers: Record<string, string>;
+  expires_at: string;
+};
+
 export type ApplicationCreateRequest = {
   email: string;
   file_id: string;

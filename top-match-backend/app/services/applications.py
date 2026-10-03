@@ -1,6 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
-from uuid import UUID, uuid4
+from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,11 +10,13 @@ from app.core.email import normalize_email
 from app.core.exceptions import (
     ApplicationNotFoundError,
     DuplicateApplicationError,
+    InvalidResumeError,
     InvalidTokenError,
     JobClosedError,
     JobNotFoundError,
     ResumeAlreadyUsedError,
     ResumeNotFoundError,
+    ResumeTooLargeError,
 )
 from app.core.notices import SCREENING_DISCLAIMER
 from app.core.security import create_resume_token, decode_resume_token
@@ -39,10 +41,59 @@ def resume_url_for(application_id: UUID) -> str:
     return f"{settings.API_V1_STR}/public/resumes/{token}"
 
 
-async def store_resume(pdf_bytes: bytes) -> UUID:
-    await asyncio.to_thread(pdf_lib.validate_pdf, pdf_bytes)
-    file_id = uuid4()
-    await storage.put(resume_storage_key(file_id), pdf_bytes)
+async def request_upload_url(
+    file_id: UUID,
+    *,
+    content_type: str,
+    byte_size: int,
+    put_url: str,
+) -> storage.PresignedPut:
+    normalized_type = content_type.split(";")[0].strip().lower()
+    if normalized_type != "application/pdf":
+        raise InvalidResumeError("File is not a PDF")
+    if byte_size > settings.MAX_UPLOAD_BYTES:
+        raise ResumeTooLargeError
+    return await storage.presign_put(
+        resume_storage_key(file_id),
+        content_type="application/pdf",
+        byte_size=byte_size,
+        put_url=put_url,
+    )
+
+
+async def store_local_put(file_id: UUID, pdf_bytes: bytes, content_type: str) -> None:
+    normalized_type = content_type.split(";")[0].strip().lower()
+    if normalized_type != "application/pdf":
+        raise InvalidResumeError("File is not a PDF")
+    if len(pdf_bytes) > settings.MAX_UPLOAD_BYTES:
+        raise ResumeTooLargeError
+    try:
+        await storage.receive_local_put(
+            resume_storage_key(file_id),
+            pdf_bytes,
+            "application/pdf",
+        )
+    except FileNotFoundError as exc:
+        raise ResumeNotFoundError from exc
+
+
+async def confirm_resume(file_id: UUID) -> UUID:
+    key = resume_storage_key(file_id)
+    meta = await storage.head(key)
+    if meta is None:
+        raise ResumeNotFoundError
+    if meta.content_length > settings.MAX_UPLOAD_BYTES:
+        await storage.delete(key)
+        raise ResumeTooLargeError
+    try:
+        pdf_bytes = await storage.get(key)
+        await asyncio.to_thread(pdf_lib.validate_pdf, pdf_bytes)
+    except InvalidResumeError:
+        await storage.delete(key)
+        raise
+    except OSError, ValueError:
+        await storage.delete(key)
+        raise InvalidResumeError("File is not a PDF") from None
     return file_id
 
 

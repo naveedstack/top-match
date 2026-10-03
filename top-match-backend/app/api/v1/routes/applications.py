@@ -5,12 +5,15 @@ from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from app.api.deps import CurrentRecruiter, DbSession
 from app.api.v1.handlers.applications import handler as application_handlers
 from app.core.config import settings
+from app.core.exceptions import ResumeNotFoundError
 from app.core.rate_limit import limiter
 from app.schemas.applications import (
     ApplicationAccepted,
     ApplicationCreate,
     ApplicationDetailResponse,
     ResumeUploaded,
+    UploadUrlRequest,
+    UploadUrlResponse,
 )
 from app.services.pipeline import process_application
 
@@ -21,10 +24,26 @@ def _job_slug_key(request: Request) -> str:
     return str(request.path_params.get("slug", "unknown"))
 
 
-@router.post("/public/files", status_code=status.HTTP_201_CREATED)
+@router.post("/public/files/upload-url")
 @limiter.limit("10/minute")
-async def upload_resume(request: Request, response: Response) -> ResumeUploaded:
-    return await application_handlers.upload_resume(request)
+async def create_upload_url(
+    request: Request, response: Response, body: UploadUrlRequest
+) -> UploadUrlResponse:
+    return await application_handlers.create_upload_url(request, body)
+
+
+@router.put("/public/files/{file_id}/content", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def store_local_put(request: Request, response: Response, file_id: UUID) -> None:
+    if settings.STORAGE_BACKEND != "local":
+        raise ResumeNotFoundError
+    await application_handlers.store_local_put(file_id, request)
+
+
+@router.post("/public/files/{file_id}/complete", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def complete_upload(request: Request, response: Response, file_id: UUID) -> ResumeUploaded:
+    return await application_handlers.complete_upload(file_id)
 
 
 @router.post("/public/jobs/{slug}/applications", status_code=status.HTTP_202_ACCEPTED)

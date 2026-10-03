@@ -26,6 +26,7 @@ def isolated_storage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     root = tmp_path / "resumes"
     root.mkdir()
     monkeypatch.setattr(settings, "STORAGE_DIR", root)
+    monkeypatch.setattr(settings, "STORAGE_BACKEND", "local")
     return root
 
 

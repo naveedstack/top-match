@@ -3,7 +3,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import PostgresDsn, SecretStr, field_validator
+from pydantic import PostgresDsn, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,7 +34,14 @@ class Settings(BaseSettings):
     RETENTION_DAYS: int = 30
     GEMINI_DATA_USE_ACKNOWLEDGED: bool = False
 
+    STORAGE_BACKEND: Literal["local", "s3"] = "local"
     STORAGE_DIR: Path = Path("var/resumes")
+    S3_BUCKET: str = ""
+    S3_REGION: str = "us-east-1"
+    S3_PREFIX: str = ""
+    S3_UPLOAD_URL_SECONDS: int = 600
+    AWS_ACCESS_KEY_ID: str = ""
+    AWS_SECRET_ACCESS_KEY: SecretStr | None = None
     MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024
     MAX_RESUME_PAGES: int = 5
     OCR_DPI: int = 150
@@ -48,6 +55,12 @@ class Settings(BaseSettings):
             value = re.sub(r"^postgres(ql)?://", "postgresql+asyncpg://", value)
             value = re.sub(r"([?&])sslmode=", r"\1ssl=", value)
         return value
+
+    @model_validator(mode="after")
+    def require_s3_bucket(self) -> Settings:
+        if self.STORAGE_BACKEND == "s3" and not self.S3_BUCKET.strip():
+            raise ValueError("S3_BUCKET is required when STORAGE_BACKEND is s3")
+        return self
 
 
 @lru_cache
