@@ -25,8 +25,8 @@ export function Input({
   const describedBy = error ? `${inputId}-error` : helper ? `${inputId}-helper` : undefined;
 
   return (
-    <div>
-      <label htmlFor={inputId} className="mb-1.5 block text-label-md font-medium text-on-surface">
+    <div className="min-w-0 max-w-full">
+      <label htmlFor={inputId} className="mb-1.5 block min-w-0 text-label-md font-medium break-words text-on-surface">
         {label}
         {required ? (
           <span className="text-error" aria-hidden>
@@ -42,7 +42,7 @@ export function Input({
           aria-invalid={error ? true : undefined}
           aria-describedby={describedBy}
           className={cn(
-            "w-full rounded-md border bg-surface-container-lowest px-3.5 py-2.5 text-body-md text-on-surface outline-none transition duration-150",
+            "box-border w-full min-w-0 max-w-full rounded-md border bg-surface-container-lowest px-3.5 py-2.5 text-body-md text-on-surface outline-none transition duration-150",
             "placeholder:text-outline",
             error
               ? "border-error focus:border-error focus:ring-[3px] focus:ring-error/15"

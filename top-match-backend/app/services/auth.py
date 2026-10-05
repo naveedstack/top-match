@@ -14,6 +14,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
+from app.core.slugs import numbered_slug, reserved_or_base_slug
 from app.models import Recruiter
 from app.repositories import recruiters as recruiters_repo
 from app.schemas.auth import AuthResponse, RecruiterMeResponse
@@ -30,6 +31,7 @@ def to_me_response(recruiter: Recruiter) -> RecruiterMeResponse:
     return RecruiterMeResponse(
         id=recruiter.id,
         company_name=recruiter.company_name,
+        company_slug=recruiter.company_slug,
         email=recruiter.email,
     )
 
@@ -58,6 +60,17 @@ async def _issue_tokens(session: AsyncSession, recruiter: Recruiter) -> IssuedAu
     )
 
 
+async def unique_company_slug(session: AsyncSession, company_name: str) -> str:
+    base = reserved_or_base_slug(company_name)
+    n = 1
+    while n <= 1000:
+        candidate = numbered_slug(base, n)
+        if await recruiters_repo.get_by_company_slug(session, candidate) is None:
+            return candidate
+        n += 1
+    raise RuntimeError("Could not generate a unique company slug")
+
+
 async def register(
     session: AsyncSession, *, company_name: str, email: str, password: str
 ) -> IssuedAuth:
@@ -65,12 +78,14 @@ async def register(
     if await recruiters_repo.get_by_email(session, normalized) is not None:
         raise DuplicateEmailError
     password_hash = await asyncio.to_thread(hash_password, password)
+    company_slug = await unique_company_slug(session, company_name)
     try:
         recruiter = await recruiters_repo.create(
             session,
             email=normalized,
             name=company_name,
             company_name=company_name,
+            company_slug=company_slug,
             password_hash=password_hash,
         )
         issued = await _issue_tokens(session, recruiter)

@@ -95,6 +95,24 @@ def decode_resume_token(token: str) -> UUID:
     return _parse_sub(payload)
 
 
+def create_attachment_token(attachment_id: UUID) -> str:
+    now = datetime.now(UTC)
+    payload = {
+        "sub": str(attachment_id),
+        "type": "attachment",
+        "iat": now,
+        "exp": now + timedelta(minutes=settings.RESUME_TOKEN_MINUTES),
+    }
+    return jwt.encode(payload, settings.JWT_SECRET.get_secret_value(), algorithm=_JWT_ALGORITHM)
+
+
+def decode_attachment_token(token: str) -> UUID:
+    payload = _decode(token)
+    if payload.get("type") != "attachment":
+        raise InvalidTokenError
+    return _parse_sub(payload)
+
+
 def _decode(token: str) -> dict[str, Any]:
     try:
         payload = jwt.decode(

@@ -2,6 +2,7 @@ from uuid import UUID
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models import Application, ApplicationStatus, Job
 
@@ -16,7 +17,9 @@ async def get_by_id_and_recruiter(
 
 
 async def get_by_slug(session: AsyncSession, slug: str) -> Job | None:
-    result = await session.execute(select(Job).where(Job.public_slug == slug))
+    result = await session.execute(
+        select(Job).options(selectinload(Job.recruiter)).where(Job.public_slug == slug)
+    )
     return result.scalar_one_or_none()
 
 
@@ -58,3 +61,10 @@ async def count_applications_by_status_for_jobs(
     for job_id, status, count in result.all():
         counts_by_job[job_id][status] = count
     return counts_by_job
+
+
+async def has_applications(session: AsyncSession, job_id: UUID) -> bool:
+    result = await session.execute(
+        select(Application.id).where(Application.job_id == job_id).limit(1)
+    )
+    return result.scalar_one_or_none() is not None

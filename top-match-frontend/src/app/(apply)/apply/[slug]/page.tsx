@@ -1,6 +1,6 @@
-import { ApplyForm } from "@/components/apply/apply-form";
+import { LegacyApplyRedirect } from "@/components/apply/legacy-apply-redirect";
 
-export default async function ApplyPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function LegacyApplyPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  return <ApplyForm slug={slug} />;
+  return <LegacyApplyRedirect slug={slug} />;
 }

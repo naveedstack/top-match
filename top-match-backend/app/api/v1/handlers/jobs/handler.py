@@ -19,27 +19,27 @@ from app.services import jobs as jobs_service
 
 async def create_job(db: AsyncSession, recruiter: Recruiter, body: JobCreate) -> JobResponse:
     job = await jobs_service.create_job(db, recruiter, body)
-    return jobs_service.to_job_response(job)
+    return jobs_service.to_job_response(job, recruiter)
 
 
 async def list_jobs(db: AsyncSession, recruiter: Recruiter) -> list[JobListItemResponse]:
-    return await jobs_service.list_jobs_with_counts(db, recruiter.id)
+    return await jobs_service.list_jobs_with_counts(db, recruiter)
 
 
 async def get_job(db: AsyncSession, recruiter: Recruiter, job_id: UUID) -> JobDetailResponse:
-    return await jobs_service.get_job_detail(db, job_id, recruiter.id)
+    return await jobs_service.get_job_detail(db, job_id, recruiter)
 
 
 async def update_job(
     db: AsyncSession, recruiter: Recruiter, job_id: UUID, body: JobUpdate
 ) -> JobResponse:
     job = await jobs_service.update_job(db, job_id, recruiter.id, body)
-    return jobs_service.to_job_response(job)
+    return jobs_service.to_job_response(job, recruiter)
 
 
 async def close_job(db: AsyncSession, recruiter: Recruiter, job_id: UUID) -> JobResponse:
     job = await jobs_service.close_job(db, job_id, recruiter.id)
-    return jobs_service.to_job_response(job)
+    return jobs_service.to_job_response(job, recruiter)
 
 
 async def get_public_job(db: AsyncSession, slug: str) -> PublicJobResponse:

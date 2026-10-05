@@ -33,6 +33,7 @@ class RefreshRequest(BaseModel):
 class RecruiterMeResponse(BaseModel):
     id: UUID
     company_name: str
+    company_slug: str
     email: str
 
 

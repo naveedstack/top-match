@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { applyToJob, getApplication, rescoreApplication, uploadResume } from "@/api/applications";
+import { applyToJob, getApplication, rescoreApplication, uploadAttachment, uploadResume } from "@/api/applications";
 import { isNotFoundError } from "@/lib/api-error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ApplicationCreateRequest } from "@/types/applications";
@@ -34,6 +34,20 @@ export function useApplication(applicationId: string) {
 export function useUploadResume() {
   return useMutation({
     mutationFn: (file: Blob) => uploadResume(file),
+  });
+}
+
+export function useUploadAttachment(slug: string) {
+  return useMutation({
+    mutationFn: ({
+      fieldId,
+      file,
+      contentType,
+    }: {
+      fieldId: string;
+      file: File;
+      contentType: string;
+    }) => uploadAttachment(slug, fieldId, file, contentType),
   });
 }
 

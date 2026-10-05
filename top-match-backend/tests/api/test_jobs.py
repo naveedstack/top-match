@@ -42,7 +42,8 @@ async def test_create_job_returns_public_apply_url(client: AsyncClient) -> None:
     assert payload["closed_at"] is None
     slug = payload["public_slug"]
     assert isinstance(slug, str) and slug
-    assert payload["public_url"] == f"{settings.PUBLIC_APP_URL}/apply/{slug}"
+    assert payload["company_slug"] == "test-recruiter"
+    assert payload["public_url"] == f"{settings.PUBLIC_APP_URL}/test-recruiter/{slug}"
 
 
 async def test_list_jobs_is_scoped_to_current_recruiter(
@@ -155,14 +156,18 @@ async def test_public_job_returns_only_public_fields(client: AsyncClient) -> Non
         "title",
         "description",
         "requirements",
+        "form_fields",
+        "company_slug",
         "status",
         "privacy_notice",
         "ai_screening_notice",
         "screening_disclaimer",
     }
+    assert body["form_fields"] == []
     assert body["title"] == JOB_BODY["title"]
     assert body["description"] == JOB_BODY["description"]
     assert body["requirements"] == JOB_BODY["requirements"]
+    assert body["company_slug"] == "test-recruiter"
     assert body["status"] == "open"
 
 

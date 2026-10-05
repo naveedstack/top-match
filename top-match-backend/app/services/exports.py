@@ -12,6 +12,7 @@ from app.models import Application, ExportEvent, Recruiter
 from app.repositories import applications as applications_repo
 from app.repositories import exports as exports_repo
 from app.schemas.applications import ExportRequest
+from app.schemas.forms import parse_form_fields
 from app.services import jobs as jobs_service
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -29,15 +30,31 @@ def _join(values: list[str]) -> str:
     return "; ".join(values)
 
 
-def render_csv(rows: list[tuple[int, Application]]) -> str:
+def render_csv(rows: list[tuple[int, Application]], form_fields: object | None = None) -> str:
+    fields = parse_form_fields(form_fields)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow([escape_csv_cell(SCREENING_DISCLAIMER)])
-    writer.writerow(_CSV_HEADER)
+    writer.writerow(_CSV_HEADER + [escape_csv_cell(field.label) for field in fields])
     for rank, application in rows:
         evaluation = application.evaluation
         strengths = [] if evaluation is None else list(evaluation.key_strengths)
         missing = [] if evaluation is None else list(evaluation.missing_requirements)
+        stored = application.answers or {}
+        attachments_by_field = {item.field_id: item for item in application.attachments}
+        extra: list[str] = []
+        for field in fields:
+            if field.type == "file":
+                attachment = attachments_by_field.get(field.id)
+                extra.append("" if attachment is None else attachment.filename)
+                continue
+            raw = stored.get(str(field.id))
+            if raw is None:
+                extra.append("")
+            elif isinstance(raw, list):
+                extra.append(", ".join(str(item) for item in raw))
+            else:
+                extra.append(str(raw))
         writer.writerow(
             [
                 escape_csv_cell(rank),
@@ -46,6 +63,7 @@ def render_csv(rows: list[tuple[int, Application]]) -> str:
                 escape_csv_cell(_join(strengths)),
                 escape_csv_cell(_join(missing)),
                 escape_csv_cell(application.created_at.isoformat()),
+                *[escape_csv_cell(item) for item in extra],
             ]
         )
     return buffer.getvalue()
@@ -68,4 +86,4 @@ async def export_job(
     )
     await exports_repo.add(session, event)
     await session.commit()
-    return render_csv(ranked), exported_ids
+    return render_csv(ranked, job.form_fields), exported_ids

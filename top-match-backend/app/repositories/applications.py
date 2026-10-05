@@ -22,7 +22,11 @@ async def get_by_id(
 ) -> Application | None:
     stmt = (
         select(Application)
-        .options(selectinload(Application.job), selectinload(Application.evaluation))
+        .options(
+            selectinload(Application.job),
+            selectinload(Application.evaluation),
+            selectinload(Application.attachments),
+        )
         .where(Application.id == application_id)
     )
     if populate_existing:
@@ -37,7 +41,11 @@ async def get_by_id_and_recruiter(
     result = await session.execute(
         select(Application)
         .join(Job)
-        .options(selectinload(Application.job), selectinload(Application.evaluation))
+        .options(
+            selectinload(Application.job),
+            selectinload(Application.evaluation),
+            selectinload(Application.attachments),
+        )
         .where(Application.id == application_id, Job.recruiter_id == recruiter_id)
     )
     return result.scalar_one_or_none()
@@ -125,7 +133,7 @@ async def list_for_export(
 ) -> list[Application]:
     stmt = (
         select(Application)
-        .options(selectinload(Application.evaluation))
+        .options(selectinload(Application.evaluation), selectinload(Application.attachments))
         .where(Application.job_id == job_id)
         .order_by(Application.score.desc().nulls_last(), Application.created_at.asc())
     )
@@ -139,6 +147,9 @@ async def list_for_export(
 
 async def list_expired_for_purge(session: AsyncSession, cutoff: datetime) -> list[Application]:
     result = await session.execute(
-        select(Application).join(Job).where(Job.closed_at.is_not(None), Job.closed_at <= cutoff)
+        select(Application)
+        .join(Job)
+        .options(selectinload(Application.attachments))
+        .where(Job.closed_at.is_not(None), Job.closed_at <= cutoff)
     )
     return list(result.scalars().all())

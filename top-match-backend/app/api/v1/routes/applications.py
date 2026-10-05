@@ -5,16 +5,18 @@ from fastapi import APIRouter, BackgroundTasks, Request, Response, status
 from app.api.deps import CurrentRecruiter, DbSession
 from app.api.v1.handlers.applications import handler as application_handlers
 from app.core.config import settings
-from app.core.exceptions import ResumeNotFoundError
+from app.core.exceptions import AttachmentNotFoundError, ResumeNotFoundError
 from app.core.rate_limit import limiter
 from app.schemas.applications import (
     ApplicationAccepted,
     ApplicationCreate,
     ApplicationDetailResponse,
+    AttachmentUploadUrlRequest,
     ResumeUploaded,
     UploadUrlRequest,
     UploadUrlResponse,
 )
+from app.services import attachments as attachments_service
 from app.services.pipeline import process_application
 
 router = APIRouter(tags=["applications"])
@@ -44,6 +46,30 @@ async def store_local_put(request: Request, response: Response, file_id: UUID) -
 @limiter.limit("10/minute")
 async def complete_upload(request: Request, response: Response, file_id: UUID) -> ResumeUploaded:
     return await application_handlers.complete_upload(file_id)
+
+
+@router.post("/public/jobs/{slug}/attachments/upload-url")
+@limiter.limit("10/minute")
+async def create_attachment_upload_url(
+    request: Request, response: Response, slug: str, db: DbSession, body: AttachmentUploadUrlRequest
+) -> UploadUrlResponse:
+    return await application_handlers.create_attachment_upload_url(request, db, slug, body)
+
+
+@router.put("/public/attachments/{file_id}/content", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
+async def store_attachment_local_put(request: Request, response: Response, file_id: UUID) -> None:
+    if settings.STORAGE_BACKEND != "local":
+        raise AttachmentNotFoundError
+    await application_handlers.store_attachment_local_put(file_id, request)
+
+
+@router.post("/public/attachments/{file_id}/complete", status_code=status.HTTP_201_CREATED)
+@limiter.limit("10/minute")
+async def complete_attachment_upload(
+    request: Request, response: Response, file_id: UUID
+) -> ResumeUploaded:
+    return await application_handlers.complete_attachment_upload(file_id)
 
 
 @router.post("/public/jobs/{slug}/applications", status_code=status.HTTP_202_ACCEPTED)
@@ -87,3 +113,16 @@ async def rescore_application(
 async def get_resume_pdf(token: str, db: DbSession) -> Response:
     pdf_bytes = await application_handlers.get_resume_pdf(db, token)
     return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+@router.get("/public/attachments/{token}")
+async def get_attachment(token: str, db: DbSession) -> Response:
+    payload, content_type, filename = await application_handlers.get_attachment_file(db, token)
+    return Response(
+        content=payload,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": attachments_service.content_disposition(filename),
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

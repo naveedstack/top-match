@@ -12,11 +12,17 @@ then confirms the object. Apply is JSON only.
    (magic bytes, readable, page count), and returns `{ "id": "<file_id>" }`. Invalid
    objects are deleted.
 4. `POST /api/v1/public/jobs/{slug}/applications` sends
-   `{ "email", "file_id", "consented": true }` as `application/json` and returns `202`
-   with status `received`. `consented` must be true (privacy/AI notice on the public job).
-   Duplicate emails for the same job return 409. A missing or already used `file_id`
-   returns 404 or 409. Closed jobs return 409. OCR and scoring run in a background task
-   after the response.
+   `{ "email", "file_id", "consented": true, "answers": { "<field_id>": ... } }` as
+   `application/json` and returns `202` with status `received`. `answers` is optional when the
+   job has no custom fields. Invalid answers return 422 with `field_errors`. `consented` must be
+   true (privacy/AI notice on the public job). Duplicate emails for the same job return 409. A
+   missing or already used resume `file_id` returns 404 or 409. Closed jobs return 409. OCR and
+   scoring run in a background task after the response and still use only the resume.
+
+Custom file fields use the same sign/PUT/complete pattern on
+`POST /api/v1/public/jobs/{slug}/attachments/upload-url` and
+`POST /api/v1/public/attachments/{file_id}/complete`. Allowed types are the field's `accept`
+list (pdf, docx, png, jpeg). Recruiters download them from `GET /api/v1/public/attachments/{token}`.
 
 Recruiters poll the job leaderboard, open `GET /api/v1/applications/{id}` for the
 evaluation plus a 15-minute `resume_url`, and `POST /api/v1/applications/{id}/rescore`
@@ -67,7 +73,10 @@ content-type: application/json
 {
   "email": "candidate@example.com",
   "file_id": "{{fileId}}",
-  "consented": true
+  "consented": true,
+  "answers": {
+    "{{fieldId}}": "Remote, 4 years of FastAPI"
+  }
 }
 ```
 

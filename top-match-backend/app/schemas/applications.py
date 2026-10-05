@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
@@ -13,6 +13,23 @@ class ApplicationCreate(BaseModel):
     email: EmailStr
     file_id: UUID
     consented: Literal[True]
+    answers: dict[str, Any] = Field(default_factory=dict)
+
+
+class AttachmentUploadUrlRequest(BaseModel):
+    field_id: UUID
+    filename: str = Field(min_length=1, max_length=255)
+    content_type: str
+    byte_size: int = Field(ge=1)
+
+
+class ApplicationAnswerItem(BaseModel):
+    field_id: UUID
+    label: str
+    type: Literal["text", "number", "dropdown", "radio", "checkboxes", "file"]
+    value: str | float | list[str] | None = None
+    filename: str | None = None
+    download_url: str | None = None
 
 
 class ResumeUploaded(BaseModel):
@@ -66,6 +83,7 @@ class ApplicationDetailResponse(BaseModel):
     injection_suspected: bool | None
     needs_review: bool | None
     resume_url: str | None
+    answers: list[ApplicationAnswerItem]
 
 
 class ExportRequest(BaseModel):

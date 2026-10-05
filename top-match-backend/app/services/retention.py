@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.db.session import SessionLocal
 from app.integrations import storage
 from app.repositories import applications as applications_repo
+from app.services import attachments as attachments_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +22,12 @@ async def purge_expired_applications(session: AsyncSession | None = None) -> dic
         purged = 0
         storage_missing = 0
         for application in rows:
+            for attachment in application.attachments:
+                try:
+                    await attachments_service.delete_storage(attachment)
+                except OSError:
+                    logger.exception("retention attachment delete failed")
+                    storage_missing += 1
             key = application.resume_storage_key
             if key is None or not await storage.exists(key):
                 storage_missing += 1

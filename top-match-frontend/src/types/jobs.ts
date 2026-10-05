@@ -1,3 +1,5 @@
+import type { FormField } from "@/types/forms";
+
 export type JobStatus = "open" | "closed";
 
 export type ApplicationCounts = {
@@ -13,6 +15,8 @@ export type Job = {
   title: string;
   description: string;
   requirements: string;
+  form_fields: FormField[];
+  company_slug: string;
   public_slug: string;
   public_url: string;
   status: JobStatus;
@@ -27,12 +31,15 @@ export type JobListItem = Job & {
 export type JobDetail = Job & {
   application_counts: ApplicationCounts;
   screening_disclaimer: string;
+  form_locked: boolean;
 };
 
 export type PublicJob = {
   title: string;
   description: string;
   requirements: string;
+  form_fields: FormField[];
+  company_slug: string;
   status: JobStatus;
   privacy_notice: string;
   ai_screening_notice: string;
@@ -43,10 +50,12 @@ export type JobCreateRequest = {
   title: string;
   description: string;
   requirements: string;
+  form_fields?: FormField[];
 };
 
 export type JobUpdateRequest = {
   title?: string;
   description?: string;
   requirements?: string;
+  form_fields?: FormField[];
 };

@@ -71,6 +71,7 @@ async def recruiter(db_session: AsyncSession) -> Recruiter:
         email="recruiter@example.com",
         name="Test Recruiter",
         company_name="Test Recruiter",
+        company_slug="test-recruiter",
         password_hash="!",
     )
     db_session.add(record)
@@ -84,6 +85,7 @@ async def other_recruiter(db_session: AsyncSession) -> Recruiter:
         email="other@example.com",
         name="Other Recruiter",
         company_name="Other Recruiter",
+        company_slug="other-recruiter",
         password_hash="!",
     )
     db_session.add(record)

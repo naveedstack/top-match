@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
 
 import { Brand } from "@/components/brand";
 import { useAuth } from "@/context/auth-context";
@@ -13,6 +13,20 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const jobsActive = pathname === "/jobs" || pathname.startsWith("/jobs/");
+  const formWorkspace = pathname === "/jobs/new" || /^\/jobs\/[^/]+\/form$/.test(pathname);
+
+  useLayoutEffect(() => {
+    if (!formWorkspace) {
+      return;
+    }
+    const html = document.documentElement;
+    html.classList.add("overflow-hidden");
+    document.body.classList.add("h-dvh", "overflow-hidden");
+    return () => {
+      html.classList.remove("overflow-hidden");
+      document.body.classList.remove("h-dvh", "overflow-hidden");
+    };
+  }, [formWorkspace]);
 
   async function onLogout() {
     await logout();
@@ -20,8 +34,13 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface text-on-surface">
-      <header className="sticky top-0 z-30 flex h-14 w-full items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-space-lg shadow-sm">
+    <div
+      className={cn(
+        "flex flex-col bg-surface text-on-surface",
+        formWorkspace ? "h-dvh max-h-dvh min-h-0 flex-1 overflow-hidden" : "min-h-screen",
+      )}
+    >
+      <header className="sticky top-0 z-30 flex h-14 w-full shrink-0 items-center justify-between border-b border-outline-variant bg-surface-container-lowest px-space-lg shadow-sm">
         <div className="flex items-center gap-space-md">
           <Brand size="nav" />
           {user?.company_name ? (
@@ -54,7 +73,14 @@ export function RecruiterShell({ children }: { children: ReactNode }) {
           Log out
         </button>
       </header>
-      <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-space-lg px-space-lg py-space-lg">
+      <main
+        className={cn(
+          "flex w-full flex-1 flex-col",
+          formWorkspace
+            ? "h-[calc(100dvh-3.5rem)] min-h-0 overflow-hidden p-0"
+            : "mx-auto max-w-[1600px] gap-space-lg px-space-lg py-space-lg",
+        )}
+      >
         {children}
       </main>
     </div>

@@ -13,7 +13,9 @@ import { useApplication, useRescoreApplication } from "@/hooks/use-applications"
 import { useExportJob, useJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
 import { csvFilenameFromTitle, downloadTextFile } from "@/lib/download";
+import { downloadAttachment } from "@/lib/download-attachment";
 import type { Citation } from "@/types/applications";
+import type { ApplicationAnswer } from "@/types/forms";
 
 type ApplicationDetailViewProps = {
   jobId: string;
@@ -123,6 +125,18 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
     setActionError("");
     try {
       await rescore.mutateAsync();
+    } catch (error) {
+      setActionError(getApiErrorMessage(error));
+    }
+  }
+
+  async function onDownloadAnswer(answer: ApplicationAnswer) {
+    if (!answer.download_url || !answer.filename) {
+      return;
+    }
+    setActionError("");
+    try {
+      await downloadAttachment(answer.download_url, answer.filename);
     } catch (error) {
       setActionError(getApiErrorMessage(error));
     }
@@ -252,6 +266,27 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
 
       <div className="grid grid-cols-1 gap-space-lg lg:grid-cols-12">
         <section className="flex flex-col gap-space-lg lg:col-span-7">
+          {application.answers.length > 0 ? (
+            <article className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg shadow-sm">
+              <div className="mb-space-md flex items-center gap-2 border-b border-outline-variant pb-space-md">
+                <Icon className="text-secondary" name="assignment" />
+                <h2 className="text-headline-sm font-semibold text-on-surface">
+                  Application answers
+                </h2>
+              </div>
+              <dl className="flex flex-col gap-space-md">
+                {application.answers.map((answer) => (
+                  <div className="min-w-0" key={answer.field_id}>
+                    <dt className="break-words text-label-md font-medium text-on-surface">{answer.label}</dt>
+                    <dd className="mt-1 min-w-0 break-words whitespace-pre-wrap text-body-md text-on-surface-variant">
+                      {formatAnswerValue(answer, () => void onDownloadAnswer(answer))}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </article>
+          ) : null}
+
           {inFlight ? (
             <p className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg text-body-md text-on-surface-variant shadow-sm">
               Scoring in progress. This page updates automatically.
@@ -339,6 +374,29 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
   );
 }
 
+function formatAnswerValue(answer: ApplicationAnswer, onDownload: () => void) {
+  if (answer.type === "file") {
+    if (!answer.filename) {
+      return "—";
+    }
+    if (!answer.download_url) {
+      return answer.filename;
+    }
+    return (
+      <button className="text-secondary underline" onClick={onDownload} type="button">
+        {answer.filename}
+      </button>
+    );
+  }
+  if (answer.value == null || answer.value === "") {
+    return "—";
+  }
+  if (Array.isArray(answer.value)) {
+    return answer.value.length > 0 ? answer.value.join(", ") : "—";
+  }
+  return String(answer.value);
+}
+
 function EvidenceCard({
   title,
   icon,
@@ -380,8 +438,8 @@ function CitationBlock({ citation }: { citation: Citation }) {
       <p className="mb-2 text-label-md font-semibold tracking-wider text-secondary uppercase">
         Claim
       </p>
-      <p className="mb-2 text-headline-sm font-medium text-on-surface">{citation.claim}</p>
-      <blockquote className="rounded-r border-l-2 border-secondary bg-surface-container-low/50 py-2 pl-3.5 text-body-md text-on-surface-variant italic">
+      <p className="mb-2 break-words text-headline-sm font-medium text-on-surface">{citation.claim}</p>
+      <blockquote className="rounded-r border-l-2 border-secondary bg-surface-container-low/50 py-2 pl-3.5 text-body-md break-words whitespace-pre-wrap text-on-surface-variant italic">
         {citation.quote}
       </blockquote>
     </div>

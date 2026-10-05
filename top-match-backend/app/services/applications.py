@@ -1,5 +1,6 @@
 import asyncio
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
@@ -22,13 +23,21 @@ from app.core.notices import SCREENING_DISCLAIMER
 from app.core.security import create_resume_token, decode_resume_token
 from app.integrations import pdf as pdf_lib
 from app.integrations import storage
-from app.models import Application, ApplicationStatus, JobStatus, Recruiter
+from app.models import Application, ApplicationAttachment, ApplicationStatus, JobStatus, Recruiter
 from app.repositories import applications as applications_repo
 from app.repositories import jobs as jobs_repo
-from app.schemas.applications import ApplicationDetailResponse, LeaderboardItem, LeaderboardResponse
+from app.schemas.applications import (
+    ApplicationAnswerItem,
+    ApplicationDetailResponse,
+    LeaderboardItem,
+    LeaderboardResponse,
+)
 from app.schemas.evaluation import Citation
+from app.schemas.forms import parse_form_fields
 from app.schemas.jobs import ApplicationCounts
+from app.services import attachments as attachments_service
 from app.services import jobs as jobs_service
+from app.services.forms import validate_answers
 from app.services.pipeline import rescore_application as run_rescore
 
 
@@ -97,7 +106,13 @@ async def confirm_resume(file_id: UUID) -> UUID:
     return file_id
 
 
-async def apply_to_job(session: AsyncSession, slug: str, email: str, file_id: UUID) -> Application:
+async def apply_to_job(
+    session: AsyncSession,
+    slug: str,
+    email: str,
+    file_id: UUID,
+    answers: dict[str, Any] | None = None,
+) -> Application:
     job = await jobs_repo.get_by_slug(session, slug)
     if job is None:
         raise JobNotFoundError
@@ -109,6 +124,8 @@ async def apply_to_job(session: AsyncSession, slug: str, email: str, file_id: UU
         raise ResumeNotFoundError
     if await applications_repo.get_by_storage_key(session, storage_key) is not None:
         raise ResumeAlreadyUsedError
+
+    cleaned_answers, attachments = await validate_answers(session, job, answers or {})
 
     normalized = normalize_email(str(email))
     existing = await applications_repo.get_by_job_and_email(session, job.id, normalized)
@@ -122,9 +139,21 @@ async def apply_to_job(session: AsyncSession, slug: str, email: str, file_id: UU
         resume_storage_key=storage_key,
         extracted_text=None,
         consented_at=datetime.now(UTC),
+        answers=cleaned_answers,
     )
     try:
         await applications_repo.add(session, application)
+        for prepared in attachments:
+            session.add(
+                ApplicationAttachment(
+                    application_id=application.id,
+                    field_id=prepared.field_id,
+                    storage_key=prepared.storage_key,
+                    filename=prepared.filename,
+                    content_type=prepared.content_type,
+                    byte_size=prepared.byte_size,
+                )
+            )
         await session.commit()
         await session.refresh(application)
     except IntegrityError:
@@ -168,6 +197,47 @@ async def get_leaderboard(
 
 def to_detail(application: Application) -> ApplicationDetailResponse:
     evaluation = application.evaluation
+    attachments_by_field = {item.field_id: item for item in application.attachments}
+    stored = application.answers or {}
+    answers: list[ApplicationAnswerItem] = []
+    for field in parse_form_fields(application.job.form_fields):
+        raw = stored.get(str(field.id))
+        if field.type == "file":
+            attachment = attachments_by_field.get(field.id)
+            answers.append(
+                ApplicationAnswerItem(
+                    field_id=field.id,
+                    label=field.label,
+                    type="file",
+                    value=None if attachment is None else attachment.filename,
+                    filename=None if attachment is None else attachment.filename,
+                    download_url=(
+                        None
+                        if attachment is None
+                        else attachments_service.attachment_url_for(attachment.id)
+                    ),
+                )
+            )
+            continue
+        value: str | float | list[str] | None
+        if raw is None:
+            value = None
+        elif field.type == "checkboxes":
+            value = [item for item in raw if isinstance(item, str)] if isinstance(raw, list) else []
+        elif field.type == "number" and isinstance(raw, (int, float)) and not isinstance(raw, bool):
+            value = float(raw)
+        elif isinstance(raw, str):
+            value = raw
+        else:
+            value = None
+        answers.append(
+            ApplicationAnswerItem(
+                field_id=field.id,
+                label=field.label,
+                type=field.type,
+                value=value,
+            )
+        )
     return ApplicationDetailResponse(
         id=application.id,
         email=application.email,
@@ -186,6 +256,7 @@ def to_detail(application: Application) -> ApplicationDetailResponse:
         injection_suspected=None if evaluation is None else evaluation.injection_suspected,
         needs_review=None if evaluation is None else evaluation.needs_review,
         resume_url=resume_url_for(application.id) if application.resume_storage_key else None,
+        answers=answers,
     )
 
 

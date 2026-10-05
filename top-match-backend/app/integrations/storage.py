@@ -14,10 +14,11 @@ import aioboto3
 from botocore.exceptions import ClientError
 
 from app.core.config import settings
-from app.core.exceptions import InvalidResumeError, ResumeTooLargeError
+from app.core.exceptions import InvalidUploadError, ResumeTooLargeError
 
 _SSE_ALGORITHM = "AES256"
 _PENDING_SUFFIX = ".pending"
+_META_SUFFIX = ".meta"
 
 
 @dataclass(frozen=True)
@@ -65,10 +66,18 @@ def _pending_path(key: str) -> Path:
     return _resolve(f"{key}{_PENDING_SUFFIX}")
 
 
-def _put_sync(key: str, data: bytes) -> None:
+def _meta_path(key: str) -> Path:
+    return _resolve(f"{key}{_META_SUFFIX}")
+
+
+def _put_sync(key: str, data: bytes, content_type: str = "application/pdf") -> None:
     path = _resolve(key)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(data)
+    _meta_path(key).write_text(
+        json.dumps({"content_type": content_type}),
+        encoding="utf-8",
+    )
 
 
 def _get_sync(key: str) -> bytes:
@@ -79,6 +88,7 @@ def _delete_sync(key: str) -> None:
     path = _resolve(key)
     path.unlink(missing_ok=True)
     _pending_path(key).unlink(missing_ok=True)
+    _meta_path(key).unlink(missing_ok=True)
 
 
 def _exists_sync(key: str) -> bool:
@@ -89,7 +99,18 @@ def _head_sync(key: str) -> ObjectHead | None:
     path = _resolve(key)
     if not path.is_file():
         return None
-    return ObjectHead(content_length=path.stat().st_size, content_type="application/pdf")
+    content_type = "application/pdf"
+    meta_path = _meta_path(key)
+    if meta_path.is_file():
+        try:
+            payload = json.loads(meta_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            stored = payload.get("content_type")
+            if isinstance(stored, str) and stored:
+                content_type = stored
+    return ObjectHead(content_length=path.stat().st_size, content_type=content_type)
 
 
 def _write_pending_sync(key: str, content_type: str, byte_size: int) -> None:
@@ -188,28 +209,28 @@ async def receive_local_put(key: str, data: bytes, content_type: str) -> None:
     expected_type = pending.get("content_type")
     expected_size = pending.get("byte_size")
     if expected_type != content_type:
-        raise InvalidResumeError("File is not a PDF")
+        raise InvalidUploadError("Upload does not match the signed request")
     if not isinstance(expected_size, int) or expected_size < 1:
-        raise InvalidResumeError("File is empty")
+        raise InvalidUploadError("File is empty")
     if not data:
-        raise InvalidResumeError("File is empty")
+        raise InvalidUploadError("File is empty")
     if len(data) != expected_size:
         if len(data) > expected_size:
             raise ResumeTooLargeError
-        raise InvalidResumeError("File is not a PDF")
-    await put(key, data)
+        raise InvalidUploadError("Upload does not match the signed request")
+    await put(key, data, content_type=content_type)
 
 
-async def put(key: str, data: bytes) -> None:
+async def put(key: str, data: bytes, *, content_type: str = "application/pdf") -> None:
     if not _is_s3():
-        await asyncio.to_thread(_put_sync, key, data)
+        await asyncio.to_thread(_put_sync, key, data, content_type)
         return
     async with _s3_client() as client:
         await client.put_object(
             Bucket=settings.S3_BUCKET,
             Key=_object_key(key),
             Body=data,
-            ContentType="application/pdf",
+            ContentType=content_type,
             ServerSideEncryption=_SSE_ALGORITHM,
         )
 

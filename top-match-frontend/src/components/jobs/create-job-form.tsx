@@ -5,24 +5,33 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
+import { FormBuilderWorkspace } from "@/components/forms/form-builder-workspace";
+import { FormCandidatePreview } from "@/components/forms/form-candidate-preview";
+import { FormWorkspaceFrame } from "@/components/forms/form-workspace-frame";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useAuth } from "@/context/auth-context";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { validateFormFields } from "@/lib/form-validation";
+import type { FormField } from "@/types/forms";
 
 const TITLE_MAX = 200;
 
 export function CreateJobForm() {
   const router = useRouter();
+  const { user } = useAuth();
   const createJob = useCreateJob();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [requirements, setRequirements] = useState("");
+  const [formFields, setFormFields] = useState<FormField[]>([]);
   const [titleError, setTitleError] = useState("");
   const [descriptionError, setDescriptionError] = useState("");
   const [requirementsError, setRequirementsError] = useState("");
+  const [formFieldsError, setFormFieldsError] = useState("");
   const [formError, setFormError] = useState("");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -57,6 +66,14 @@ export function CreateJobForm() {
       setRequirementsError("");
     }
 
+    const fieldsMessage = validateFormFields(formFields);
+    if (fieldsMessage) {
+      setFormFieldsError(fieldsMessage);
+      valid = false;
+    } else {
+      setFormFieldsError("");
+    }
+
     if (!valid) {
       return;
     }
@@ -66,6 +83,7 @@ export function CreateJobForm() {
         title: trimmedTitle,
         description: trimmedDescription,
         requirements: trimmedRequirements,
+        form_fields: formFields,
       });
       router.replace(`/jobs/${job.id}`);
     } catch (error) {
@@ -74,32 +92,18 @@ export function CreateJobForm() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-space-md">
-      <Link
-        className="inline-flex items-center gap-1.5 text-label-md text-on-surface-variant hover:text-secondary"
-        href="/jobs"
-      >
-        <Icon className="text-[16px]" name="arrow_back" />
-        Back to Jobs
-      </Link>
-
-      <div className="grid grid-cols-1 items-start gap-gutter lg:grid-cols-12">
-        <div className="flex flex-col gap-space-md lg:col-span-8">
-          <div>
-            <h1 className="text-headline-xl tracking-tight text-on-surface">Create a Job</h1>
-            <p className="mt-1.5 text-body-md leading-relaxed text-on-surface-variant">
-              Define your role criteria. Once created, a unique public application URL will be
-              generated for LinkedIn, Indeed, and external boards.
-            </p>
-          </div>
-
-          {formError ? <AuthErrorBanner message={formError} /> : null}
-
-          <form
-            className="flex flex-col gap-space-lg rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg shadow-sm"
-            noValidate
-            onSubmit={onSubmit}
-          >
+    <form className="flex h-full min-h-0 flex-col overflow-hidden" noValidate onSubmit={onSubmit}>
+      <FormWorkspaceFrame
+        builder={
+          <div className="flex min-w-0 flex-col gap-6 px-6 py-8">
+            <div>
+              <h1 className="text-headline-lg font-bold tracking-tight text-on-surface">Create a job</h1>
+              <p className="mt-1 text-body-md text-on-surface-variant">
+                Define the role, then add extra application questions. The candidate preview on the
+                right updates as you type.
+              </p>
+            </div>
+            {formError ? <AuthErrorBanner message={formError} /> : null}
             <Input
               error={titleError}
               helper="Displayed publicly on the candidate application page."
@@ -112,18 +116,19 @@ export function CreateJobForm() {
               type="text"
               value={title}
             />
-
             <div>
               <p className="mb-1.5 text-label-md font-medium text-on-surface">Public apply link</p>
               <div className="flex items-center rounded-lg border border-outline-variant bg-surface-container-low px-space-md py-2.5">
                 <Icon className="mr-2 text-[18px] text-secondary" name="link" />
                 <p className="text-body-sm text-on-surface-variant">
-                  A unique <span className="font-mono text-on-surface">/apply/{"{slug}"}</span> URL
-                  is created when you save. Copy it on the next screen.
+                  A unique{" "}
+                  <span className="font-mono text-on-surface">
+                    /{user?.company_slug ?? "company"}/{"{job}"}
+                  </span>{" "}
+                  URL is created when you save. Copy it on the next screen.
                 </p>
               </div>
             </div>
-
             <Textarea
               error={descriptionError}
               id="job-description"
@@ -134,14 +139,13 @@ export function CreateJobForm() {
               rows={6}
               value={description}
             />
-
             <div className="flex flex-col gap-2">
               <div className="flex items-start gap-space-sm rounded-lg border border-secondary-fixed bg-surface-container-low p-space-md">
                 <Icon className="mt-0.5 shrink-0 text-[20px] text-secondary" name="info" />
                 <p className="text-body-sm leading-snug text-on-surface">
                   The AI scores resumes{" "}
-                  <span className="font-semibold text-secondary">only against these requirements</span>
-                  . Be specific about must-haves, experience, and technical competencies.
+                  <span className="font-semibold text-secondary">only against these requirements</span>.
+                  Be specific about must-haves, experience, and technical competencies.
                 </p>
               </div>
               <Textarea
@@ -162,11 +166,16 @@ export function CreateJobForm() {
                 value={requirements}
               />
             </div>
-
+            <FormBuilderWorkspace
+              error={formFieldsError}
+              fields={formFields}
+              onChange={(next) => {
+                setFormFieldsError("");
+                setFormFields(next);
+              }}
+            />
             <fieldset className="flex flex-col gap-2 border-t border-outline-variant pt-2">
-              <legend className="text-label-md font-medium text-on-surface">
-                Data deletion schedule
-              </legend>
+              <legend className="text-label-md font-medium text-on-surface">Data deletion schedule</legend>
               <div className="flex items-start gap-space-sm rounded-lg border border-outline-variant bg-surface-bright p-3.5">
                 <input
                   checked
@@ -186,33 +195,52 @@ export function CreateJobForm() {
                 </div>
               </div>
             </fieldset>
-
-            <div className="flex flex-col-reverse items-center justify-between gap-space-md border-t border-outline-variant pt-space-md sm:flex-row">
-              <Link
-                className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-space-md py-2.5 text-center text-label-lg text-on-surface hover:bg-surface-container-low sm:w-auto"
-                href="/jobs"
-              >
-                Cancel
-              </Link>
-              <Button className="w-full sm:w-auto" pending={createJob.isPending} type="submit">
-                Create Job &amp; Generate Apply Link
-                <Icon className="text-[18px]" name="arrow_forward" />
-              </Button>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant pt-4">
+              <p className="flex items-center gap-1.5 text-body-sm text-on-surface-variant">
+                <Icon className="text-[16px] text-secondary" name="info" />
+                You can add more questions later until the first application arrives.
+              </p>
+              <div className="flex items-center gap-2">
+                <Button onClick={() => router.push("/jobs")} type="button" variant="outline">
+                  Cancel
+                </Button>
+                <Button pending={createJob.isPending} type="submit">
+                  Create Job &amp; Generate Apply Link
+                  <Icon className="text-[18px]" name="arrow_forward" />
+                </Button>
+              </div>
             </div>
-          </form>
-        </div>
-
-        <aside className="flex flex-col gap-space-md lg:col-span-4 lg:mt-14">
-          <div className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg shadow-sm">
-            <h2 className="mb-space-sm text-headline-sm text-on-surface">How scoring works</h2>
-            <ul className="flex flex-col gap-space-sm text-body-sm leading-relaxed text-on-surface-variant">
-              <li>The model scores each resume only against the requirements you enter here.</li>
-              <li>Candidates apply with email and a PDF. They do not create an account.</li>
-              <li>After you create the job, copy the public apply link and share it on job boards.</li>
-            </ul>
           </div>
-        </aside>
-      </div>
-    </div>
+        }
+        preview={
+          <div className="min-w-0 px-6 py-8">
+            <FormCandidatePreview
+              companyName={user?.company_name}
+              description={description}
+              fields={formFields}
+              requirements={requirements}
+              title={title}
+            />
+          </div>
+        }
+        subheader={
+          <section className="border-b border-outline-variant bg-surface-container-lowest px-space-lg py-2.5">
+            <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-space-md">
+              <nav className="flex items-center gap-1.5 text-label-md text-on-surface-variant">
+                <Link className="hover:text-secondary" href="/jobs">
+                  Jobs
+                </Link>
+                <span className="text-outline">/</span>
+                <span className="font-semibold text-on-surface">Create a Job</span>
+              </nav>
+              <span className="inline-flex items-center gap-1 rounded-full border border-secondary-fixed bg-surface-container px-2.5 py-0.5 text-label-sm text-on-secondary-container">
+                <Icon className="text-[14px]" name="visibility" />
+                Live candidate preview
+              </span>
+            </div>
+          </section>
+        }
+      />
+    </form>
   );
 }

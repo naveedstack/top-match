@@ -1,4 +1,5 @@
 import type { ApplicationCounts } from "@/types/jobs";
+import type { ApplicationAnswer } from "@/types/forms";
 
 export type ApplicationStatus = "received" | "processing" | "scored" | "refused" | "failed";
 
@@ -16,6 +17,13 @@ export type ResumeUploadUrlRequest = {
   byte_size: number;
 };
 
+export type AttachmentUploadUrlRequest = {
+  field_id: string;
+  filename: string;
+  content_type: string;
+  byte_size: number;
+};
+
 export type ResumeUploadUrlResponse = {
   file_id: string;
   upload_url: string;
@@ -27,6 +35,7 @@ export type ApplicationCreateRequest = {
   email: string;
   file_id: string;
   consented: true;
+  answers?: Record<string, string | number | string[]>;
 };
 
 export type ApplicationAccepted = {
@@ -70,6 +79,7 @@ export type ApplicationDetail = {
   injection_suspected: boolean | null;
   needs_review: boolean | null;
   resume_url: string | null;
+  answers: ApplicationAnswer[];
 };
 
 export type ExportRequest = {

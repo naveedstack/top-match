@@ -1,18 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, type ChangeEvent, type DragEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
+import { FormFieldInput } from "@/components/forms/form-field-input";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useApply, useUploadResume } from "@/hooks/use-applications";
+import { useApply, useUploadAttachment, useUploadResume } from "@/hooks/use-applications";
 import { usePublicJob } from "@/hooks/use-jobs";
-import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
+import { getApiErrorMessage, getApiFieldErrors, isNotFoundError } from "@/lib/api-error";
+import { applyPath } from "@/lib/apply-path";
 import { saveApplySession } from "@/lib/apply-session";
 import { cn } from "@/lib/cn";
 import { isValidEmail } from "@/lib/email";
+import { mimeForFile, validateAnswers, type FormAnswers } from "@/lib/form-validation";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
@@ -30,10 +41,11 @@ function isPdfFile(file: File): boolean {
   return file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 }
 
-export function ApplyForm({ slug }: { slug: string }) {
+export function ApplyForm({ company, slug }: { company: string; slug: string }) {
   const router = useRouter();
   const jobQuery = usePublicJob(slug);
   const uploadResume = useUploadResume();
+  const uploadAttachment = useUploadAttachment(slug);
   const apply = useApply(slug);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const consentId = useId();
@@ -45,10 +57,18 @@ export function ApplyForm({ slug }: { slug: string }) {
   const [emailError, setEmailError] = useState("");
   const [fileError, setFileError] = useState("");
   const [consentError, setConsentError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<FormAnswers>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
 
   const job = jobQuery.data;
+
+  useEffect(() => {
+    if (job?.company_slug && job.company_slug !== company) {
+      router.replace(applyPath(job.company_slug, slug));
+    }
+  }, [company, job?.company_slug, router, slug]);
 
   function acceptFile(next: File | undefined) {
     setFormError("");
@@ -110,21 +130,67 @@ export function ApplyForm({ slug }: { slug: string }) {
       setConsentError("");
     }
 
+    const customFields = job?.form_fields ?? [];
+    const nextFieldErrors = validateAnswers(customFields, answers);
+    setFieldErrors(nextFieldErrors);
+    if (Object.keys(nextFieldErrors).length > 0) {
+      valid = false;
+    }
+
     if (!valid || !file) {
       return;
     }
 
     setPending(true);
     try {
-      const uploaded = await uploadResume.mutateAsync(file);
+      const fileFields = customFields.filter((field) => field.type === "file");
+      const resumePromise = uploadResume.mutateAsync(file);
+      const attachmentPromise = Promise.all(
+        fileFields.map(async (field) => {
+          const selected = answers[field.id];
+          if (!(selected instanceof File)) {
+            return [field.id, null] as const;
+          }
+          const uploadedFile = await uploadAttachment.mutateAsync({
+            fieldId: field.id,
+            file: selected,
+            contentType: mimeForFile(selected),
+          });
+          return [field.id, uploadedFile.id] as const;
+        }),
+      );
+      const [uploaded, attachmentResults] = await Promise.all([resumePromise, attachmentPromise]);
+      const payload: Record<string, string | number | string[]> = {};
+      const attachmentIds = Object.fromEntries(attachmentResults);
+      for (const field of customFields) {
+        if (field.type === "file") {
+          const fileId = attachmentIds[field.id];
+          if (fileId) {
+            payload[field.id] = fileId;
+          }
+          continue;
+        }
+        const value = answers[field.id];
+        if (value == null || value === "") {
+          continue;
+        }
+        if (typeof value === "string" || typeof value === "number" || Array.isArray(value)) {
+          payload[field.id] = value;
+        }
+      }
       await apply.mutateAsync({
         email: trimmedEmail,
         file_id: uploaded.id,
         consented: true,
+        answers: payload,
       });
-      saveApplySession(slug, trimmedEmail);
-      router.replace(`/apply/${slug}/done`);
+      saveApplySession(slug, trimmedEmail, {
+        title: job?.title,
+        privacyNotice: job?.privacy_notice,
+      });
+      router.replace(`${applyPath(company, slug)}/done`);
     } catch (error) {
+      setFieldErrors(getApiFieldErrors(error));
       setFormError(getApiErrorMessage(error));
       setPending(false);
     }
@@ -148,12 +214,16 @@ export function ApplyForm({ slug }: { slug: string }) {
     return <AuthErrorBanner message={getApiErrorMessage(jobQuery.error)} />;
   }
 
+  if (job.company_slug !== company) {
+    return <p className="text-body-md text-on-surface-variant">Loading…</p>;
+  }
+
   const closed = job.status === "closed";
 
   return (
     <main className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm">
       <section className="border-b border-outline-variant p-space-lg md:p-space-xl">
-        <h1 className="text-headline-xl-mobile md:text-headline-xl text-on-surface">{job.title}</h1>
+        <h1 className="break-words text-headline-xl-mobile md:text-headline-xl text-on-surface">{job.title}</h1>
       </section>
 
       <section className="flex flex-col gap-space-lg border-b border-outline-variant bg-surface-bright p-space-lg md:p-space-xl">
@@ -162,7 +232,7 @@ export function ApplyForm({ slug }: { slug: string }) {
             <Icon className="text-[20px] text-secondary" name="subject" />
             Role Overview
           </h2>
-          <p className="whitespace-pre-wrap text-body-md leading-relaxed text-on-surface-variant">
+          <p className="whitespace-pre-wrap break-words text-body-md leading-relaxed text-on-surface-variant">
             {job.description}
           </p>
         </div>
@@ -171,7 +241,7 @@ export function ApplyForm({ slug }: { slug: string }) {
             <Icon className="text-[20px] text-secondary" name="rule" />
             Requirements
           </h2>
-          <p className="whitespace-pre-wrap text-body-md leading-relaxed text-on-surface-variant">
+          <p className="whitespace-pre-wrap break-words text-body-md leading-relaxed text-on-surface-variant">
             {job.requirements}
           </p>
         </div>
@@ -281,6 +351,24 @@ export function ApplyForm({ slug }: { slug: string }) {
               ) : null}
               {fileError ? <p className="mt-1 text-body-sm text-error">{fileError}</p> : null}
             </div>
+
+            {(job.form_fields ?? []).map((field) => (
+              <div className="min-w-0" key={field.id}>
+                <FormFieldInput
+                  error={fieldErrors[field.id]}
+                  field={field}
+                  onChange={(value) => {
+                    setAnswers((current) => ({ ...current, [field.id]: value }));
+                    setFieldErrors((current) => {
+                      const next = { ...current };
+                      delete next[field.id];
+                      return next;
+                    });
+                  }}
+                  value={answers[field.id]}
+                />
+              </div>
+            ))}
 
             <div>
               <label className="flex cursor-pointer items-start gap-space-sm select-none" htmlFor={consentId}>

@@ -20,7 +20,7 @@ from app.models import Application, ApplicationStatus
 from app.repositories import applications as applications_repo
 from app.repositories import evaluations as evaluations_repo
 from app.services import evaluation as evaluation_service
-from app.services.ingestion import extract_text
+from app.services.ingestion import IngestionResult, extract_text
 
 logger = logging.getLogger(__name__)
 
@@ -40,39 +40,47 @@ async def _mark_failed(session: AsyncSession, application: Application) -> None:
     await session.commit()
 
 
-async def _process(
+async def _prepare_storage_key(
     session: AsyncSession,
     application_id: UUID,
     *,
     reclaim_processing: bool,
-    completer: EvaluationCompleter | None,
-) -> None:
+) -> str | None:
     claimed = await applications_repo.claim_for_processing(
         session, application_id, reclaim_processing=reclaim_processing
     )
     if not claimed:
-        return
+        return None
     application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
     if application is None or application.job is None:
-        return
+        return None
     storage_key = application.resume_storage_key
     if storage_key is None or not await storage.exists(storage_key):
         await _mark_failed(session, application)
-        return
-    try:
-        pdf_bytes = await storage.get(storage_key)
-        ingestion = await extract_text(pdf_bytes)
-    except InvalidResumeError, OSError, ValueError:
-        logger.exception("application processing failed during ingestion")
+        return None
+    return storage_key
+
+
+async def _ingest(storage_key: str) -> IngestionResult:
+    pdf_bytes = await storage.get(storage_key)
+    return await extract_text(pdf_bytes)
+
+
+async def _finalize(
+    session: AsyncSession,
+    application: Application,
+    ingestion: IngestionResult,
+    completer: EvaluationCompleter | None,
+) -> None:
+    job = application.job
+    if job is None:
         await _mark_failed(session, application)
         return
     application.extracted_text = ingestion.text
     await session.commit()
     try:
         async with _semaphore():
-            result = await evaluation_service.evaluate(
-                application.job, ingestion.text, completer=completer
-            )
+            result = await evaluation_service.evaluate(job, ingestion.text, completer=completer)
     except EvaluationFailedError:
         logger.exception("application processing failed during evaluation")
         await _mark_failed(session, application)
@@ -82,6 +90,45 @@ async def _process(
     application.status = ApplicationStatus.SCORED if result.is_resume else ApplicationStatus.REFUSED
     application.score = result.score
     await session.commit()
+
+
+async def _mark_failed_by_id(application_id: UUID) -> None:
+    async with SessionLocal() as owned:
+        application = await applications_repo.get_by_id(
+            owned, application_id, populate_existing=True
+        )
+        if application is not None:
+            await _mark_failed(owned, application)
+
+
+async def _process(
+    session: AsyncSession,
+    application_id: UUID,
+    *,
+    reclaim_processing: bool,
+    completer: EvaluationCompleter | None,
+) -> None:
+    storage_key = await _prepare_storage_key(
+        session, application_id, reclaim_processing=reclaim_processing
+    )
+    if storage_key is None:
+        return
+    try:
+        ingestion = await _ingest(storage_key)
+    except InvalidResumeError, OSError, ValueError:
+        logger.exception("application processing failed during ingestion")
+        await _mark_failed_after_prepare(session, application_id)
+        return
+    application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
+    if application is None or application.job is None:
+        return
+    await _finalize(session, application, ingestion, completer)
+
+
+async def _mark_failed_after_prepare(session: AsyncSession, application_id: UUID) -> None:
+    application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
+    if application is not None:
+        await _mark_failed(session, application)
 
 
 async def process_application(
@@ -99,13 +146,26 @@ async def process_application(
             completer=completer,
         )
         return
+    storage_key: str | None = None
     async with SessionLocal() as owned:
-        await _process(
-            owned,
-            application_id,
-            reclaim_processing=reclaim_processing,
-            completer=completer,
+        storage_key = await _prepare_storage_key(
+            owned, application_id, reclaim_processing=reclaim_processing
         )
+    if storage_key is None:
+        return
+    try:
+        ingestion = await _ingest(storage_key)
+    except InvalidResumeError, OSError, ValueError:
+        logger.exception("application processing failed during ingestion")
+        await _mark_failed_by_id(application_id)
+        return
+    async with SessionLocal() as owned:
+        application = await applications_repo.get_by_id(
+            owned, application_id, populate_existing=True
+        )
+        if application is None or application.job is None:
+            return
+        await _finalize(owned, application, ingestion, completer)
 
 
 async def recover_stuck_applications(

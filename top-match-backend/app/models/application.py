@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -14,13 +14,16 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 from app.models.enums import ApplicationStatus
 
 if TYPE_CHECKING:
+    from app.models.application_attachment import ApplicationAttachment
     from app.models.evaluation import Evaluation
     from app.models.job import Job
 
@@ -46,6 +49,11 @@ class Application(Base):
         default=ApplicationStatus.RECEIVED,
     )
     resume_storage_key: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    answers: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     consented_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -58,4 +66,9 @@ class Application(Base):
     job: Mapped[Job] = relationship("Job", back_populates="applications")
     evaluation: Mapped[Evaluation | None] = relationship(
         "Evaluation", back_populates="application", uselist=False
+    )
+    attachments: Mapped[list[ApplicationAttachment]] = relationship(
+        "ApplicationAttachment",
+        back_populates="application",
+        cascade="all, delete-orphan",
     )

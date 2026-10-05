@@ -35,6 +35,35 @@ export async function uploadResume(file: Blob): Promise<ResumeUploaded> {
   return data;
 }
 
+export async function uploadAttachment(
+  slug: string,
+  fieldId: string,
+  file: File,
+  contentType: string,
+): Promise<ResumeUploaded> {
+  const { data: signed } = await api.post<ResumeUploadUrlResponse>(
+    `/public/jobs/${slug}/attachments/upload-url`,
+    {
+      field_id: fieldId,
+      filename: file.name,
+      content_type: contentType,
+      byte_size: file.size,
+    },
+  );
+  const uploaded = await fetch(signed.upload_url, {
+    method: "PUT",
+    headers: putHeaders(signed.headers),
+    body: file,
+  });
+  if (!uploaded.ok) {
+    throw new Error("Could not upload file");
+  }
+  const { data } = await api.post<ResumeUploaded>(
+    `/public/attachments/${signed.file_id}/complete`,
+  );
+  return data;
+}
+
 export async function applyToJob(
   slug: string,
   body: ApplicationCreateRequest,

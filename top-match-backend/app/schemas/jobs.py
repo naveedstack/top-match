@@ -4,6 +4,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import ApplicationStatus, JobStatus
+from app.schemas.forms import FormField, validate_form_fields
 
 
 def _require_stripped(value: str) -> str:
@@ -17,11 +18,17 @@ class JobCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1)
     requirements: str = Field(min_length=1)
+    form_fields: list[FormField] = Field(default_factory=list)
 
     @field_validator("title", "description", "requirements")
     @classmethod
     def strip_not_blank(cls, value: str) -> str:
         return _require_stripped(value)
+
+    @field_validator("form_fields")
+    @classmethod
+    def check_form_fields(cls, value: list[FormField]) -> list[FormField]:
+        return validate_form_fields(value)
 
 
 class JobUpdate(BaseModel):
@@ -30,6 +37,7 @@ class JobUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     description: str | None = Field(default=None, min_length=1)
     requirements: str | None = Field(default=None, min_length=1)
+    form_fields: list[FormField] | None = None
 
     @field_validator("title", "description", "requirements")
     @classmethod
@@ -37,6 +45,13 @@ class JobUpdate(BaseModel):
         if value is None:
             return None
         return _require_stripped(value)
+
+    @field_validator("form_fields")
+    @classmethod
+    def check_form_fields(cls, value: list[FormField] | None) -> list[FormField] | None:
+        if value is None:
+            return None
+        return validate_form_fields(value)
 
 
 class ApplicationCounts(BaseModel):
@@ -62,6 +77,8 @@ class JobResponse(BaseModel):
     title: str
     description: str
     requirements: str
+    form_fields: list[FormField]
+    company_slug: str
     public_slug: str
     public_url: str
     status: JobStatus
@@ -76,12 +93,15 @@ class JobListItemResponse(JobResponse):
 class JobDetailResponse(JobResponse):
     application_counts: ApplicationCounts
     screening_disclaimer: str
+    form_locked: bool
 
 
 class PublicJobResponse(BaseModel):
     title: str
     description: str
     requirements: str
+    form_fields: list[FormField]
+    company_slug: str
     status: JobStatus
     privacy_notice: str
     ai_screening_notice: str

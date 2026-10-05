@@ -1,12 +1,13 @@
 # Jobs
 
-Recruiters create a job (title, description, requirements) and receive a non-guessable
-`public_slug` plus `public_url` for LinkedIn/Indeed. They can list and edit their own
-jobs, inspect application counts, and close a job (sets `closed_at`, stops new applies).
-The public GET is unauthenticated and returns title, description, requirements, status,
-and the privacy / AI-screening notices plus the hiring-law disclaimer so the candidate
-apply page can render them. Recruiter routes look up by `id` and
-`recruiter_id`; another recruiter's job is 404, not 403.
+Recruiters create a job (title, description, requirements, optional `form_fields`) and receive a
+non-guessable `public_slug` plus `public_url` for LinkedIn/Indeed. They can list and edit their
+own jobs, inspect application counts, and close a job (sets `closed_at`, stops new applies).
+`form_fields` cannot be changed after the first application (409). The public GET is
+unauthenticated and returns title, description, requirements, `form_fields`, status, and the
+privacy / AI-screening notices plus the hiring-law disclaimer so the candidate apply page can
+render them. Recruiter routes look up by `id` and `recruiter_id`; another recruiter's job is 404,
+not 403.
 
 The leaderboard is polled (no SSE). Items are sorted by `score` descending, nulls last,
 then `created_at`. `counts` always cover every status on the job, even when `status` is

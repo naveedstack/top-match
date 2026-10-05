@@ -265,6 +265,10 @@ export function JobDashboard({ jobId }: { jobId: string }) {
               <Icon className="text-on-surface-variant" name="edit" />
               Edit Job
             </Button>
+            <Button onClick={() => router.push(`/jobs/${jobId}/form`)} type="button" variant="outline">
+              <Icon className="text-on-surface-variant" name="edit_note" />
+              Application Form
+            </Button>
             {job.status === "open" ? (
               <Button onClick={() => setCloseOpen(true)} type="button" variant="destructive">
                 <Icon name="block" />

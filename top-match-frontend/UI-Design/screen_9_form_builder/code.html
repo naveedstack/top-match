@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Top Match - Application Form Builder</title>
+<!-- Material Symbols Outlined font -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "on-secondary-container": "#00476e",
+            "surface-container-lowest": "#ffffff",
+            "inverse-primary": "#bec6e0",
+            "secondary-container": "#5bb8fe",
+            "surface-container-highest": "#d3e4fe",
+            "on-primary-fixed": "#131b2e",
+            "surface-container": "#e5eeff",
+            "on-tertiary-container": "#0c9488",
+            "surface-bright": "#f8f9ff",
+            "surface-container-low": "#eff4ff",
+            "tertiary-fixed-dim": "#6bd8cb",
+            "inverse-surface": "#213145",
+            "on-primary-fixed-variant": "#3f465c",
+            "secondary-fixed": "#cce5ff",
+            "primary-container": "#131b2e",
+            "on-error-container": "#93000a",
+            "on-secondary-fixed-variant": "#004b73",
+            "on-background": "#0b1c30",
+            "on-surface": "#0b1c30",
+            "surface-variant": "#d3e4fe",
+            "inverse-on-surface": "#eaf1ff",
+            "outline-variant": "#c6c6cd",
+            "on-tertiary-fixed-variant": "#005049",
+            "surface-dim": "#cbdbf5",
+            "primary": "#000000",
+            "on-primary": "#ffffff",
+            "tertiary-fixed": "#89f5e7",
+            "on-error": "#ffffff",
+            "tertiary-container": "#00201d",
+            "primary-fixed-dim": "#bec6e0",
+            "background": "#f8f9ff",
+            "outline": "#76777d",
+            "error-container": "#ffdad6",
+            "on-primary-container": "#7c839b",
+            "surface": "#f8f9ff",
+            "error": "#ba1a1a",
+            "secondary-fixed-dim": "#93ccff",
+            "secondary": "#006398",
+            "primary-fixed": "#dae2fd",
+            "on-tertiary-fixed": "#00201d",
+            "on-tertiary": "#ffffff",
+            "on-secondary": "#ffffff",
+            "tertiary": "#000000",
+            "surface-tint": "#565e74",
+            "surface-container-high": "#dce9ff",
+            "on-surface-variant": "#45464d",
+            "on-secondary-fixed": "#001d31"
+          },
+          "borderRadius": {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          "spacing": {
+            "gutter-sm": "1rem",
+            "margin-sm": "1rem",
+            "space-lg": "1.5rem",
+            "gutter": "1.5rem",
+            "space-md": "1rem",
+            "space-xl": "2rem",
+            "space-sm": "0.5rem",
+            "margin": "2rem",
+            "space-xs": "0.25rem"
+          },
+          "fontFamily": {
+            "headline-xl-mobile": ["Inter"],
+            "label-sm": ["Inter"],
+            "label-md": ["Inter"],
+            "headline-lg-mobile": ["Inter"],
+            "headline-sm": ["Inter"],
+            "body-lg": ["Inter"],
+            "body-md": ["Inter"],
+            "label-lg": ["Inter"],
+            "headline-xl": ["Inter"],
+            "headline-lg": ["Inter"],
+            "body-sm": ["Inter"],
+            "headline-md": ["Inter"]
+          },
+          "fontSize": {
+            "headline-xl-mobile": ["26px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+            "label-sm": ["11px", { "lineHeight": "14px", "letterSpacing": "0.025em", "fontWeight": "600" }],
+            "label-md": ["12px", { "lineHeight": "16px", "letterSpacing": "0.01em", "fontWeight": "500" }],
+            "headline-lg-mobile": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }],
+            "headline-sm": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+            "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.005em", "fontWeight": "400" }],
+            "body-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "label-lg": ["14px", { "lineHeight": "20px", "letterSpacing": "-0.005em", "fontWeight": "500" }],
+            "headline-xl": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.025em", "fontWeight": "700" }],
+            "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+            "body-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0em", "fontWeight": "400" }],
+            "headline-md": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.015em", "fontWeight": "600" }]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+      line-height: 1;
+      display: inline-block;
+      vertical-align: middle;
+    }
+    /* Clean custom toggles and scrollbars */
+    input[type="checkbox"].switch-toggle:checked + label {
+      background-color: #006398;
+    }
+    input[type="checkbox"].switch-toggle:checked + label .switch-dot {
+      transform: translateX(14px);
+    }
+  </style>
+</head>
+<body class="bg-background text-on-surface antialiased min-h-screen flex flex-col font-body-md text-body-md selection:bg-surface-container-highest">
+<!-- TOP APP BAR (Shared Components Exact Execution) -->
+<header class="sticky top-0 z-50 bg-surface-container-lowest border-b border-outline-variant shadow-sm w-full h-14">
+<div class="flex justify-between items-center w-full px-space-lg h-full max-w-full">
+<!-- Left side: Brand, Company divider, Links -->
+<div class="flex items-center gap-space-lg h-full">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-on-background text-surface-container-lowest flex items-center justify-center font-bold">
+<span class="material-symbols-outlined text-[20px]" data-icon="filter_alt">filter_alt</span>
+</div>
+<span class="font-headline-md text-headline-md font-semibold text-on-surface tracking-tight">Top Match</span>
+</div>
+<div class="h-5 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-space-xs text-on-surface-variant font-label-md text-label-md">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="font-medium text-on-surface">Soft Tech</span>
+</div>
+<!-- Navigation items: Jobs is active -->
+<nav class="hidden md:flex items-center h-full gap-space-sm ml-space-md">
+<a class="text-secondary font-headline-sm border-b-2 border-secondary h-full flex items-center px-space-sm" href="#">
+            Jobs
+          </a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#">
+            Candidates
+          </a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#">
+            Analytics
+          </a>
+<a class="text-on-surface-variant font-label-lg h-full flex items-center px-space-sm hover:bg-surface-container-low hover:text-on-surface transition-colors duration-150" href="#">
+            Settings
+          </a>
+</nav>
+</div>
+<!-- Right side actions -->
+<div class="flex items-center gap-space-md">
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors" title="Help & Documentation">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+</button>
+<button class="w-8 h-8 rounded-lg flex items-center justify-center text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors relative" title="Notifications">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+<span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-secondary"></span>
+</button>
+<div class="h-4 w-[1px] bg-outline-variant"></div>
+<div class="flex items-center gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-surface-container-highest text-secondary font-label-sm text-label-sm flex items-center justify-center font-bold">
+            ST
+          </div>
+<button class="text-on-surface-variant font-label-sm text-label-sm hover:text-on-surface transition-colors">
+            Log out
+          </button>
+</div>
+</div>
+</div>
+</header>
+<!-- SUB-HEADER / BREADCRUMB STRIP -->
+<section class="bg-surface-container-lowest border-b border-outline-variant py-2.5 px-space-lg">
+<div class="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-space-md">
+<!-- Breadcrumb path & status badges -->
+<div class="flex items-center flex-wrap gap-space-sm">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-label-md text-label-md">
+<a class="hover:text-secondary" href="#">Jobs</a>
+<span class="text-outline">/</span>
+<a class="hover:text-secondary" href="#">Senior Backend Engineer</a>
+<span class="text-outline">/</span>
+<span class="font-semibold text-on-surface">Application Form</span>
+</div>
+<div class="h-3.5 w-[1px] bg-outline-variant mx-1"></div>
+<!-- Status Chip -->
+<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant font-label-sm text-label-sm border border-outline-variant">
+<span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          Draft · 0 Applications
+        </span>
+<!-- Form lock notice -->
+<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container text-on-secondary-container font-label-sm text-label-sm border border-secondary-fixed">
+<span class="material-symbols-outlined text-[14px]" data-icon="lock_open">lock_open</span>
+          Form editable · Form locks permanently after first application
+        </span>
+</div>
+<!-- Public Apply URL Chip -->
+<div class="flex items-center gap-1.5 bg-surface-container-low px-2.5 py-1 rounded-md border border-outline-variant">
+<span class="font-label-sm text-label-sm text-on-surface-variant">Public URL:</span>
+<span class="font-label-sm text-label-sm font-mono text-on-surface select-all">app.topmatch.example/soft-tech/WkAHIWFBCb8</span>
+<button class="ml-1 text-secondary hover:text-on-secondary-container transition-colors p-0.5 rounded hover:bg-surface-container" title="Copy public link">
+<span class="material-symbols-outlined text-[15px]" data-icon="content_copy">content_copy</span>
+</button>
+</div>
+</div>
+</section>
+<!-- MAIN CANVAS: 1440px CONTAINER WITH TWO-COLUMN DESKTOP LAYOUT -->
+<main class="flex-1 w-full max-w-[1440px] mx-auto px-6 py-8">
+<div class="flex flex-col lg:flex-row gap-8 items-start">
+<!-- LEFT COLUMN: BUILDER INTERFACE (approx 58% width) -->
+<div class="w-full lg:w-[58%] flex flex-col gap-6">
+<!-- Title & Subtitle block -->
+<div>
+<div class="flex items-center justify-between">
+<h1 class="font-headline-lg text-headline-lg font-bold text-on-surface tracking-tight">Application form</h1>
+<span class="text-label-sm font-label-sm text-on-surface-variant">Workflow: Standard Tech Screening</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+            Email, resume, and consent are always included. Add extra questions if this role needs them.
+          </p>
+<!-- Rule notice banner -->
+<div class="mt-3.5 flex items-start gap-2.5 p-3 rounded-lg bg-surface-container-low border border-secondary-fixed text-on-secondary-container font-label-md text-label-md">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5" data-icon="info">info</span>
+<div>
+<span class="font-semibold text-secondary">Builder Constraints:</span>
+              Up to 20 custom fields (max 5 file uploads). Custom answers are stored for recruiters and are <strong class="font-semibold text-on-surface">NOT</strong> sent to AI scoring.
+            </div>
+</div>
+</div>
+<!-- 1. ALWAYS INCLUDED FIXED SECTION -->
+<section class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm overflow-hidden">
+<div class="px-5 py-3.5 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="lock">lock</span>
+<span class="font-label-sm text-label-sm font-bold tracking-wider text-on-surface uppercase">Always Included (Mandatory)</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant">3 non-configurable system fields</span>
+</div>
+<div class="p-4 space-y-2.5">
+<p class="font-body-sm text-body-sm text-on-surface-variant mb-2">
+              These 3 fields are non-removable, non-reorderable, and satisfy institutional compliance.
+            </p>
+<!-- Row 1: Email -->
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface-bright border border-outline-variant hover:border-secondary-container transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="mail">mail</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-2">
+                    Email address
+                    <span class="text-error font-body-sm text-body-sm">*</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Unique identifier, prevents duplicate submissions. Always required.</div>
+</div>
+</div>
+<span class="shrink-0 font-label-sm text-label-sm px-2.5 py-1 rounded bg-surface-container text-on-secondary-container border border-outline-variant font-medium">
+                Always included · Locked
+              </span>
+</div>
+<!-- Row 2: Resume PDF -->
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface-bright border border-outline-variant hover:border-secondary-container transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="picture_as_pdf">picture_as_pdf</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-2">
+                    Resume PDF (max 5 MB)
+                    <span class="text-error font-body-sm text-body-sm">*</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">The ONLY file parsed and sent to AI evaluation rubric. Always required.</div>
+</div>
+</div>
+<span class="shrink-0 font-label-sm text-label-sm px-2.5 py-1 rounded bg-secondary-fixed text-on-secondary-fixed-variant border border-secondary-container font-medium flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                Always included · Scored by AI
+              </span>
+</div>
+<!-- Row 3: Consent Checkbox -->
+<div class="flex items-center justify-between p-3 rounded-lg bg-surface-bright border border-outline-variant hover:border-secondary-container transition-colors">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-surface-container flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]" data-icon="verified_user">verified_user</span>
+</div>
+<div>
+<div class="font-headline-sm text-headline-sm font-semibold text-on-surface flex items-center gap-2">
+                    Consent checkbox
+                    <span class="text-error font-body-sm text-body-sm">*</span>
+</div>
+<div class="font-body-sm text-body-sm text-on-surface-variant">Mandatory GDPR / CCPA & AI screening transparency statement. Always required.</div>
+</div>
+</div>
+<span class="shrink-0 font-label-sm text-label-sm px-2.5 py-1 rounded bg-surface-container text-on-secondary-container border border-outline-variant font-medium">
+                Always included · Legal
+              </span>
+</div>
+</div>
+</section>
+<!-- 2. CUSTOM QUESTIONS SECTION -->
+<section class="flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<div>
+<div class="flex items-center gap-2.5">
+<h2 class="font-headline-md text-headline-md font-bold text-on-surface">Custom questions</h2>
+<span class="font-label-sm text-label-sm font-semibold px-2 py-0.5 rounded-full bg-surface-container text-secondary border border-secondary-fixed">
+                  4 of 20 fields used (1 of 5 uploads)
+                </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                Stored in candidate dossier for recruiter review. Not evaluated by AI scoring.
+              </p>
+</div>
+</div>
+<!-- Question Cards Container -->
+<div class="flex flex-col gap-4">
+<!-- CARD 1: Text Field -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm p-4 hover:border-secondary transition-all">
+<div class="flex items-center justify-between pb-3 border-b border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-semibold px-2 py-0.5 rounded bg-surface-container-low text-secondary border border-secondary-fixed">
+                    TEXT FIELD
+                  </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Position 1</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low disabled:opacity-40" disabled="" title="Move Up">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Down">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_downward">arrow_downward</span>
+</button>
+<div class="h-3 w-[1px] bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/40" title="Delete question">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete_outline">delete_outline</span>
+</button>
+</div>
+</div>
+<div class="mt-3.5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Field Label</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="LinkedIn URL"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Help Text / Placeholder</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Paste your profile URL"/>
+</div>
+</div>
+<div class="mt-3.5 pt-3 border-t border-surface-container flex flex-wrap items-center justify-between gap-3 text-body-sm">
+<div class="flex items-center gap-5">
+<!-- Required Toggle -->
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="hidden switch-toggle" id="req-1" type="checkbox"/>
+<label class="relative inline-block w-8 h-4 rounded-full bg-outline-variant cursor-pointer transition-colors duration-200" for="req-1">
+<span class="switch-dot absolute left-0.5 top-0.5 bg-surface-container-lowest w-3 h-3 rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface font-medium">Required field</span>
+</label>
+<!-- Long Text Toggle -->
+<label class="flex items-center gap-2 cursor-pointer">
+<input class="hidden switch-toggle" id="long-1" type="checkbox"/>
+<label class="relative inline-block w-8 h-4 rounded-full bg-outline-variant cursor-pointer transition-colors duration-200" for="long-1">
+<span class="switch-dot absolute left-0.5 top-0.5 bg-surface-container-lowest w-3 h-3 rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Long text (textarea)</span>
+</label>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface-variant">
+<span>Max characters:</span>
+<input class="w-16 px-1.5 py-0.5 rounded border border-outline-variant text-center font-mono text-xs" type="number" value="150"/>
+</div>
+</div>
+</div>
+<!-- CARD 2: Number Field -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm p-4 hover:border-secondary transition-all">
+<div class="flex items-center justify-between pb-3 border-b border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-semibold px-2 py-0.5 rounded bg-surface-container-low text-secondary border border-secondary-fixed">
+                    NUMBER FIELD
+                  </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Position 2</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Up">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Down">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_downward">arrow_downward</span>
+</button>
+<div class="h-3 w-[1px] bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/40" title="Delete question">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete_outline">delete_outline</span>
+</button>
+</div>
+</div>
+<div class="mt-3.5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Field Label</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Years of backend experience"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Help Text / Context</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Relevant distributed systems or backend engineering"/>
+</div>
+</div>
+<div class="mt-3.5 pt-3 border-t border-surface-container flex flex-wrap items-center justify-between gap-3 text-body-sm">
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface">
+<span>Min:</span>
+<input class="w-14 px-1.5 py-0.5 rounded border border-outline-variant text-center font-mono text-xs" type="number" value="0"/>
+</div>
+<div class="flex items-center gap-1.5 font-label-sm text-label-sm text-on-surface">
+<span>Max:</span>
+<input class="w-14 px-1.5 py-0.5 rounded border border-outline-variant text-center font-mono text-xs" type="number" value="40"/>
+</div>
+<label class="flex items-center gap-1.5 cursor-pointer font-label-sm text-label-sm text-on-surface">
+<input checked="" class="w-3.5 h-3.5 rounded border-outline-variant text-primary focus:ring-secondary" type="checkbox"/>
+                    Whole numbers only
+                  </label>
+</div>
+<!-- Required Toggle -->
+<div class="flex items-center gap-2">
+<input checked="" class="hidden switch-toggle" id="req-2" type="checkbox"/>
+<label class="relative inline-block w-8 h-4 rounded-full bg-outline-variant cursor-pointer transition-colors duration-200" for="req-2">
+<span class="switch-dot absolute left-0.5 top-0.5 bg-surface-container-lowest w-3 h-3 rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface font-medium">Required field</span>
+</div>
+</div>
+</div>
+<!-- CARD 3: Dropdown Field -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm p-4 hover:border-secondary transition-all">
+<div class="flex items-center justify-between pb-3 border-b border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-semibold px-2 py-0.5 rounded bg-surface-container-low text-secondary border border-secondary-fixed">
+                    DROPDOWN FIELD
+                  </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Position 3</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Up">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Down">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_downward">arrow_downward</span>
+</button>
+<div class="h-3 w-[1px] bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/40" title="Delete question">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete_outline">delete_outline</span>
+</button>
+</div>
+</div>
+<div class="mt-3.5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Field Label</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Work authorization"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Help Text</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Select your primary right-to-work status"/>
+</div>
+</div>
+<!-- Options List -->
+<div class="mt-3.5">
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1.5">Dropdown Options</label>
+<div class="space-y-1.5">
+<div class="flex items-center gap-2">
+<span class="text-outline cursor-grab">
+<span class="material-symbols-outlined text-[16px]" data-icon="drag_indicator">drag_indicator</span>
+</span>
+<input class="flex-1 px-2.5 py-1 rounded border border-outline-variant bg-surface-bright text-body-sm text-on-surface" type="text" value="US citizen"/>
+<button class="text-on-surface-variant hover:text-error p-1" title="Remove option">
+<span class="material-symbols-outlined text-[16px]" data-icon="close">close</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline cursor-grab">
+<span class="material-symbols-outlined text-[16px]" data-icon="drag_indicator">drag_indicator</span>
+</span>
+<input class="flex-1 px-2.5 py-1 rounded border border-outline-variant bg-surface-bright text-body-sm text-on-surface" type="text" value="Green card"/>
+<button class="text-on-surface-variant hover:text-error p-1" title="Remove option">
+<span class="material-symbols-outlined text-[16px]" data-icon="close">close</span>
+</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-outline cursor-grab">
+<span class="material-symbols-outlined text-[16px]" data-icon="drag_indicator">drag_indicator</span>
+</span>
+<input class="flex-1 px-2.5 py-1 rounded border border-outline-variant bg-surface-bright text-body-sm text-on-surface" type="text" value="Need sponsorship"/>
+<button class="text-on-surface-variant hover:text-error p-1" title="Remove option">
+<span class="material-symbols-outlined text-[16px]" data-icon="close">close</span>
+</button>
+</div>
+</div>
+<div class="mt-2">
+<button class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border border-dashed border-outline-variant hover:border-secondary text-secondary hover:bg-surface-container-low font-label-sm text-label-sm transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="add">add</span>
+                    Add option
+                  </button>
+</div>
+</div>
+<div class="mt-3.5 pt-3 border-t border-surface-container flex items-center justify-between">
+<span class="font-body-sm text-body-sm text-on-surface-variant">Candidates can select exactly one option from the menu.</span>
+<!-- Required Toggle -->
+<div class="flex items-center gap-2">
+<input checked="" class="hidden switch-toggle" id="req-3" type="checkbox"/>
+<label class="relative inline-block w-8 h-4 rounded-full bg-outline-variant cursor-pointer transition-colors duration-200" for="req-3">
+<span class="switch-dot absolute left-0.5 top-0.5 bg-surface-container-lowest w-3 h-3 rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface font-medium">Required field</span>
+</div>
+</div>
+</div>
+<!-- CARD 4: File Upload -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm p-4 hover:border-secondary transition-all">
+<div class="flex items-center justify-between pb-3 border-b border-surface-container-high">
+<div class="flex items-center gap-2">
+<span class="font-label-sm text-label-sm font-semibold px-2 py-0.5 rounded bg-surface-container-low text-secondary border border-secondary-fixed">
+                    FILE UPLOAD (EXTRA)
+                  </span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">Position 4 · 1 of 5 allowed uploads</span>
+</div>
+<div class="flex items-center gap-1">
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low" title="Move Up">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_upward">arrow_upward</span>
+</button>
+<button class="p-1 rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low disabled:opacity-40" disabled="" title="Move Down">
+<span class="material-symbols-outlined text-[18px]" data-icon="arrow_downward">arrow_downward</span>
+</button>
+<div class="h-3 w-[1px] bg-outline-variant mx-1"></div>
+<button class="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/40" title="Delete question">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete_outline">delete_outline</span>
+</button>
+</div>
+</div>
+<div class="mt-3.5 grid grid-cols-1 md:grid-cols-2 gap-3.5">
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Field Label</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Cover letter (optional)"/>
+</div>
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">Help Text</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-md text-body-md focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20" type="text" value="Additional context or notes for the hiring team"/>
+</div>
+</div>
+<div class="mt-3.5">
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1.5">Allowed File Types</label>
+<div class="flex flex-wrap items-center gap-2">
+<label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-secondary-fixed text-on-secondary-fixed-variant border border-secondary font-label-sm text-label-sm cursor-pointer">
+<input checked="" class="w-3.5 h-3.5 rounded border-secondary text-secondary focus:ring-0" type="checkbox"/>
+                    PDF (.pdf)
+                  </label>
+<label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-bright text-on-surface-variant border border-outline-variant font-label-sm text-label-sm cursor-pointer">
+<input class="w-3.5 h-3.5 rounded border-outline-variant text-secondary focus:ring-0" type="checkbox"/>
+                    DOCX (.docx)
+                  </label>
+<label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-bright text-on-surface-variant border border-outline-variant font-label-sm text-label-sm cursor-pointer">
+<input class="w-3.5 h-3.5 rounded border-outline-variant text-secondary focus:ring-0" type="checkbox"/>
+                    PNG (.png)
+                  </label>
+<label class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-surface-bright text-on-surface-variant border border-outline-variant font-label-sm text-label-sm cursor-pointer">
+<input class="w-3.5 h-3.5 rounded border-outline-variant text-secondary focus:ring-0" type="checkbox"/>
+                    JPEG (.jpg, .jpeg)
+                  </label>
+</div>
+</div>
+<div class="mt-3.5 pt-3 border-t border-surface-container flex flex-wrap items-center justify-between gap-3">
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-on-secondary-container">
+                  Max 5 MB · Stored in dossier only
+                </span>
+<!-- Required Toggle (OFF) -->
+<div class="flex items-center gap-2">
+<input class="hidden switch-toggle" id="req-4" type="checkbox"/>
+<label class="relative inline-block w-8 h-4 rounded-full bg-outline-variant cursor-pointer transition-colors duration-200" for="req-4">
+<span class="switch-dot absolute left-0.5 top-0.5 bg-surface-container-lowest w-3 h-3 rounded-full transition-transform duration-200 shadow-sm"></span>
+</label>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-medium">Required field</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 3. ADD FIELD ACTION BAR -->
+<section class="rounded-xl border border-dashed border-outline-variant bg-surface-bright p-4">
+<div class="font-label-sm text-label-sm font-bold text-on-surface uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="add_circle">add_circle</span>
+            Add another question
+          </div>
+<div class="flex flex-wrap gap-2">
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="title">title</span>
+              + Text
+            </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="pin">pin</span>
+              + Number
+            </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="arrow_drop_down_circle">arrow_drop_down_circle</span>
+              + Dropdown
+            </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="radio_button_checked">radio_button_checked</span>
+              + Single choice (radio)
+            </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="check_box">check_box</span>
+              + Multiple choice
+            </button>
+<button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest hover:bg-surface-container-low hover:border-secondary font-label-md text-label-md text-on-surface transition-all">
+<span class="material-symbols-outlined text-[17px] text-secondary" data-icon="attach_file">attach_file</span>
+              + File upload
+            </button>
+</div>
+</section>
+<!-- 4. LEFT COLUMN FOOTER / SAVE BAR -->
+<div class="pt-4 border-t border-outline-variant flex flex-wrap items-center justify-between gap-4">
+<div class="flex items-center gap-2 text-body-sm font-body-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="lock_clock">lock_clock</span>
+<span>You can edit this until the first application arrives.</span>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-4 py-2 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface hover:bg-surface-container-low font-label-lg text-label-lg transition-colors">
+              Cancel
+            </button>
+<button class="px-5 py-2 rounded-lg bg-primary-container hover:bg-on-background text-surface-container-lowest font-label-lg text-label-lg flex items-center gap-2 shadow-sm transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="check">check</span>
+              Save form
+            </button>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: STICKY LIVE CANDIDATE PREVIEW (approx 42% width) -->
+<div class="w-full lg:w-[42%] sticky top-20">
+<!-- Live Preview Frame Wrapper -->
+<div class="rounded-xl border border-outline-variant bg-surface-container-lowest shadow-md overflow-hidden flex flex-col">
+<!-- Frame Header -->
+<div class="px-4 py-3 bg-surface-container-low border-b border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+<span class="font-headline-sm text-headline-sm font-semibold text-on-surface">Candidate preview</span>
+<span class="font-label-sm text-label-sm px-2 py-0.5 rounded bg-surface-container text-secondary font-medium">Live preview</span>
+</div>
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<button class="p-1 rounded hover:bg-surface-container hover:text-on-surface" title="Desktop view">
+<span class="material-symbols-outlined text-[18px]" data-icon="desktop_windows">desktop_windows</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-container hover:text-on-surface" title="Mobile view">
+<span class="material-symbols-outlined text-[18px]" data-icon="smartphone">smartphone</span>
+</button>
+</div>
+</div>
+<!-- Applicant Sheet Container (Scrollable internally if screen is short) -->
+<div class="p-5 max-h-[80vh] overflow-y-auto space-y-4">
+<!-- Mini header inside preview -->
+<div class="flex items-center justify-between pb-3 border-b border-surface-container">
+<div class="flex items-center gap-1.5">
+<div class="w-5 h-5 rounded bg-on-background text-surface-container-lowest flex items-center justify-center">
+<span class="material-symbols-outlined text-[13px]" data-icon="filter_alt">filter_alt</span>
+</div>
+<span class="font-headline-sm text-headline-sm font-bold text-on-surface tracking-tight">Top Match</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[14px]" data-icon="lock">lock</span>
+<span>Secure Application Portal</span>
+</div>
+</div>
+<!-- Job Title & Meta -->
+<div>
+<h3 class="font-headline-md text-headline-md font-bold text-on-surface">Senior Backend Engineer</h3>
+<p class="font-label-md text-label-md text-on-surface-variant mt-0.5">Soft Tech · Remote (US/EU) · Full-time</p>
+</div>
+<!-- Role snippet & requirements -->
+<div class="p-3 rounded-lg bg-surface-bright border border-outline-variant space-y-2">
+<span class="font-label-sm text-label-sm font-bold uppercase tracking-wider text-on-surface-variant block">Key Technical Requirements</span>
+<ul class="space-y-1.5 text-body-sm font-body-sm text-on-surface">
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5" data-icon="check_circle">check_circle</span>
+<span>5+ years building high-throughput distributed systems in Go, Rust, or C++</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5" data-icon="check_circle">check_circle</span>
+<span>Production experience architecting event streaming platforms</span>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0 mt-0.5" data-icon="check_circle">check_circle</span>
+<span>Deep understanding of distributed consensus and sharding</span>
+</li>
+</ul>
+</div>
+<!-- Mini Compliance Callout Box -->
+<div class="p-2.5 rounded-lg bg-surface-container-low border border-secondary-fixed text-on-secondary-container text-body-sm space-y-1">
+<div class="flex items-center gap-1.5 font-semibold text-secondary font-label-sm text-label-sm">
+<span class="material-symbols-outlined text-[15px]" data-icon="verified_user">verified_user</span>
+                Transparency & Algorithmic Notice
+              </div>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                Your resume is evaluated strictly against the posted rubric criteria. Answers to supplementary questions are stored directly for recruiter review and are purged 30 days after job close.
+              </p>
+</div>
+<!-- Rendered Live Form Inputs (Exact Order) -->
+<div class="space-y-3 pt-1">
+<!-- 1. Email -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  Email address <span class="text-error">*</span>
+</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-sm text-body-sm placeholder:text-outline cursor-not-allowed" disabled="" placeholder="e.g. alex.chen@example.com *" type="email"/>
+</div>
+<!-- 2. Resume PDF dropzone -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  Resume PDF <span class="text-error">*</span>
+</label>
+<div class="border-2 border-dashed border-outline-variant hover:border-secondary rounded-lg p-3 text-center bg-surface-bright transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-secondary text-[22px] block mx-auto mb-1" data-icon="cloud_upload">cloud_upload</span>
+<span class="font-label-sm text-label-sm text-on-surface font-medium block">Drag & drop resume (PDF only, max 5 MB) *</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px] block mt-0.5">Scored by AI rubric</span>
+</div>
+</div>
+<!-- 3. Custom Field 1: LinkedIn URL -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  LinkedIn URL <span class="text-error">*</span>
+</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-sm text-body-sm placeholder:text-outline cursor-not-allowed" disabled="" placeholder="https://linkedin.com/in/... *" type="text"/>
+</div>
+<!-- 4. Custom Field 2: Years Experience -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  Years of backend experience <span class="text-error">*</span>
+</label>
+<input class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-sm text-body-sm placeholder:text-outline cursor-not-allowed" disabled="" placeholder="e.g. 6 *" type="number"/>
+</div>
+<!-- 5. Custom Field 3: Work Authorization -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  Work authorization <span class="text-error">*</span>
+</label>
+<div class="relative">
+<select class="w-full px-3 py-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest text-on-surface font-body-sm text-body-sm appearance-none cursor-not-allowed" disabled="">
+<option>Select authorization status... ▾</option>
+</select>
+</div>
+</div>
+<!-- 6. Custom Field 4: Cover letter upload dropzone -->
+<div>
+<label class="block font-label-sm text-label-sm font-semibold text-on-surface mb-1">
+                  Cover letter (optional)
+                </label>
+<div class="border border-dashed border-outline-variant rounded-lg p-2.5 text-center bg-surface-bright">
+<div class="flex items-center justify-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-secondary" data-icon="attach_file">attach_file</span>
+<span class="font-label-sm text-label-sm text-on-surface">Upload cover letter (PDF optional)</span>
+</div>
+</div>
+</div>
+<!-- 7. Mandatory Consent Checkbox -->
+<div class="pt-1">
+<label class="flex items-start gap-2 cursor-not-allowed">
+<input checked="" class="w-4 h-4 mt-0.5 rounded border-outline-variant text-primary focus:ring-0" disabled="" type="checkbox"/>
+<span class="text-xs text-on-surface leading-tight">
+                    I have read the privacy and automated AI screening notices, and consent to evaluation against this rubric. <span class="text-error">*</span>
+</span>
+</label>
+</div>
+<!-- 8. Submit button preview -->
+<div class="pt-2">
+<button class="w-full py-2.5 rounded-lg bg-primary-container/60 text-surface-container-lowest font-label-lg text-label-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-75" disabled="">
+<span>Submit Application</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Preview Frame Footer Info -->
+<div class="p-3 bg-surface-container-low border-t border-outline-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-[16px] shrink-0" data-icon="info">info</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant text-[11px] leading-tight">
+              This is exactly what candidates see. Custom answers are for you; only the resume PDF is scored by the AI.
+            </span>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

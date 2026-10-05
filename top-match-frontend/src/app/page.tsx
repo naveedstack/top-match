@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 import { LoadingScreen } from "@/components/loading-screen";
+import { LandingPage } from "@/components/marketing/landing-page";
 import { useAuth } from "@/context/auth-context";
 
 export default function Home() {
@@ -11,11 +12,15 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading) {
+    if (isLoading || !isAuthenticated) {
       return;
     }
-    router.replace(isAuthenticated ? "/jobs" : "/login");
+    router.replace("/jobs");
   }, [isAuthenticated, isLoading, router]);
 
-  return <LoadingScreen />;
+  if (isLoading || isAuthenticated) {
+    return <LoadingScreen />;
+  }
+
+  return <LandingPage />;
 }

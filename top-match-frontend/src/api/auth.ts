@@ -5,6 +5,7 @@ export function toRecruiter(auth: AuthResponse): Recruiter {
   return {
     id: auth.id,
     company_name: auth.company_name,
+    company_slug: auth.company_slug,
     email: auth.email,
   };
 }

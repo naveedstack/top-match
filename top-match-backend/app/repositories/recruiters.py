@@ -17,18 +17,25 @@ async def get_by_id(session: AsyncSession, recruiter_id: UUID) -> Recruiter | No
     return result.scalar_one_or_none()
 
 
+async def get_by_company_slug(session: AsyncSession, company_slug: str) -> Recruiter | None:
+    result = await session.execute(select(Recruiter).where(Recruiter.company_slug == company_slug))
+    return result.scalar_one_or_none()
+
+
 async def create(
     session: AsyncSession,
     *,
     email: str,
     name: str,
     company_name: str,
+    company_slug: str,
     password_hash: str,
 ) -> Recruiter:
     recruiter = Recruiter(
         email=email,
         name=name,
         company_name=company_name,
+        company_slug=company_slug,
         password_hash=password_hash,
     )
     session.add(recruiter)

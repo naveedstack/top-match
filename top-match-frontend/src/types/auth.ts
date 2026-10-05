@@ -1,6 +1,7 @@
 export type Recruiter = {
   id: string;
   company_name: string;
+  company_slug: string;
   email: string;
 };
 

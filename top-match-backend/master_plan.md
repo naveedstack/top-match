@@ -16,6 +16,7 @@ stage's exit criteria pass.
 | 5     | Pipeline Integration, Leaderboard & Export  | Milestone 2   | ✅ Done (durable queue deferred) |
 | 6     | Recruiter Auth & Access Control             | Milestone 2   | ✅ Done (Google OAuth deferred) |
 | 7     | Compliance, Hardening & Beta Readiness      | Beta launch   | ✅ Beta-safe slice (S3, queue, Sentry, Docker/CI, load test, 50×5 deferred) |
+| 8     | Custom application forms                    | —             | ✅ Done        |
 
 ## Working rules (every stage)
 
@@ -363,3 +364,55 @@ fail a candidate's submission.
 - Load test: 500 applications in an hour on one job (PRD viral scenario) with no lost or stuck
   applications.
 - Database backup and restore verified.
+
+---
+
+## Stage 8: Custom application forms ✅
+
+**Goal:** Recruiters can add extra questions to a job's apply form. Candidates fill them in.
+Recruiters see the answers. The AI still scores only the resume.
+
+### Form schema
+
+JSON list on `jobs.form_fields` (max 20 fields, max 5 file fields). Discriminated union on `type`:
+
+- `text` (`multiline`, `max_length`)
+- `number` (`min`, `max`, `integer_only`)
+- `dropdown` / `radio` / `checkboxes` (`options`, 2–50 unique labels)
+- `file` (`accept`: pdf, docx, png, jpeg)
+
+Each field has `id` (UUID), `label`, optional `help_text`, and `required`. Email, resume PDF, and
+consent stay as fixed fields.
+
+### Locking
+
+`PATCH /jobs/{id}` with `form_fields` returns 409 after the first application. Title, description,
+and requirements stay editable. Job detail includes `form_locked`.
+
+### Apply
+
+`POST /public/jobs/{slug}/applications` accepts `answers` (field id → value). File answers are
+attachment `file_id`s from:
+
+1. `POST /public/jobs/{slug}/attachments/upload-url`
+2. PUT to `upload_url`
+3. `POST /public/attachments/{file_id}/complete` (magic-byte check; invalid objects deleted)
+
+Invalid answers return 422 `{ "detail", "field_errors": { field_id: message } }`.
+
+### Recruiter
+
+Application detail includes `answers` in form order. File rows have a 15-minute
+`GET /public/attachments/{token}` URL (`Content-Disposition: attachment`). CSV adds one column per
+custom field (filenames for file fields, formula-escaped). Retention deletes attachment objects
+before deleting the application. Answers are never logged.
+
+### Exit criteria (met)
+
+- Empty form behaves like today.
+- Invalid form definitions are 422.
+- Form edits after an application are 409.
+- Answer validation covers required, type, range, options, and unused/unknown fields.
+- Attachment upload → complete → apply → detail → download works offline on local storage.
+- Retention deletes attachments. CSV includes custom columns.
+

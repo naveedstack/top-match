@@ -34,12 +34,46 @@ class ResumeAlreadyUsedError(Exception):
     """Raised when the same uploaded file is submitted on a second application."""
 
 
-class InvalidResumeError(Exception):
+class InvalidUploadError(Exception):
+    """Raised when an uploaded object does not match the signed request."""
+
+    def __init__(self, message: str = "Invalid upload") -> None:
+        self.message = message
+        super().__init__(message)
+
+
+class InvalidResumeError(InvalidUploadError):
     """Raised when the upload is not an acceptable unencrypted PDF."""
 
     def __init__(self, message: str = "Invalid resume") -> None:
-        self.message = message
         super().__init__(message)
+
+
+class InvalidAttachmentError(InvalidUploadError):
+    """Raised when a custom-form file is not an allowed type."""
+
+    def __init__(self, message: str = "Invalid file") -> None:
+        super().__init__(message)
+
+
+class FormLockedError(Exception):
+    """Raised when a recruiter tries to change form fields after applications exist."""
+
+
+class FormAnswersError(Exception):
+    """Raised when apply answers do not match the job form."""
+
+    def __init__(self, field_errors: dict[str, str]) -> None:
+        self.field_errors = field_errors
+        super().__init__("Invalid form answers")
+
+
+class AttachmentNotFoundError(Exception):
+    """Raised when an attachment file_id was never uploaded or completed."""
+
+
+class AttachmentAlreadyUsedError(Exception):
+    """Raised when the same uploaded attachment is submitted on a second application."""
 
 
 class EvaluationFailedError(Exception):

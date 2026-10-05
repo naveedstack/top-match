@@ -6,4 +6,5 @@ export type ApiValidationIssue = {
 
 export type ApiErrorBody = {
   detail?: string | ApiValidationIssue[];
+  field_errors?: Record<string, string>;
 };

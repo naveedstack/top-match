@@ -18,6 +18,7 @@ export function Textarea({
   required,
   className,
   extra,
+  disabled,
   ...props
 }: TextareaProps) {
   const generatedId = useId();
@@ -25,9 +26,9 @@ export function Textarea({
   const describedBy = error ? `${textareaId}-error` : helper ? `${textareaId}-helper` : undefined;
 
   return (
-    <div>
+    <div className="min-w-0 max-w-full">
       <div className="mb-1.5 flex items-center justify-between gap-space-sm">
-        <label htmlFor={textareaId} className="block text-label-md font-medium text-on-surface">
+        <label htmlFor={textareaId} className="block min-w-0 text-label-md font-medium break-words text-on-surface">
           {label}
           {required ? (
             <span className="text-error" aria-hidden>
@@ -41,17 +42,21 @@ export function Textarea({
       <textarea
         id={textareaId}
         required={required}
+        disabled={disabled}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy}
         className={cn(
-          "w-full resize-y rounded-md border bg-surface-container-lowest px-3.5 py-2.5 text-body-md text-on-surface outline-none transition duration-150",
+          "box-border block w-full min-w-0 max-w-full overflow-x-hidden break-words rounded-md border bg-surface-container-lowest px-3.5 py-2.5 text-body-md text-on-surface outline-none transition duration-150",
+          "[field-sizing:fixed]",
           "placeholder:text-outline",
+          disabled ? "resize-none" : "resize-y",
           error
             ? "border-error focus:border-error focus:ring-[3px] focus:ring-error/15"
             : "border-outline-variant focus:border-secondary focus:ring-[3px] focus:ring-secondary/15",
           className,
         )}
         {...props}
+        cols={1}
       />
       {error ? (
         <p id={`${textareaId}-error`} className="mt-1 text-body-sm text-error">

@@ -22,6 +22,16 @@ export function getApiErrorMessage(error: unknown, fallback = "Something went wr
   return fallback;
 }
 
+export function getApiFieldErrors(error: unknown): Record<string, string> {
+  if (axios.isAxiosError<ApiErrorBody>(error)) {
+    const fieldErrors = error.response?.data?.field_errors;
+    if (fieldErrors && typeof fieldErrors === "object") {
+      return fieldErrors;
+    }
+  }
+  return {};
+}
+
 export function isNotFoundError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 404;
 }

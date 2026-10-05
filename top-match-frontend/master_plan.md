@@ -25,6 +25,7 @@ Backend API is described in [`../PRD.md`](../PRD.md) and
 | 6     | Application detail           | 6                                            | ✅ Done         |
 | 7     | Apply and success            | 7, 8                                         | ✅ Done         |
 | 8     | End-to-end pass              | all                                          | ✅ Done         |
+| 9     | Custom application forms     | 4, 5, 6, 7                                   | ✅ Done         |
 
 ## Already in place (Stage 0)
 
@@ -347,6 +348,40 @@ Mark Stages 1–8 done in this file when they pass.
 
 - The list above works against local API + `CORS_ORIGINS` including the frontend origin.
 - `tsc` and `eslint` are green.
+
+---
+
+## Stage 9: Custom application forms
+
+**Goal:** Recruiters build extra questions on create/edit job. Candidates fill them on apply.
+Recruiters read answers on application detail. AI scoring is unchanged.
+
+### Work
+
+- `FormBuilder` on Create Job and an Application Form dashboard panel (locked after the first
+  application). Email, resume, and consent are shown as always-included rows.
+- Public apply renders `form_fields` between resume and consent. Resume and attachments upload in
+  parallel, then apply sends `answers`. Server `field_errors` map onto fields.
+- Application detail shows an Application answers card. File downloads use native `fetch` (a 401
+  must not refresh the recruiter token).
+
+### API
+
+| Action            | Hook / UI                         | Endpoint |
+| ----------------- | --------------------------------- | -------- |
+| Create/update form | `useCreateJob` / `useUpdateJob` | `POST /jobs`, `PATCH /jobs/{id}` (`form_fields`) |
+| Public form       | `usePublicJob`                    | `GET /public/jobs/{slug}` (`form_fields`) |
+| Attachment upload | `useUploadAttachment`             | `POST /public/jobs/{slug}/attachments/upload-url` then PUT, then complete |
+| Apply answers     | `useApply`                        | `POST /public/jobs/{slug}/applications` (`answers`) |
+| Read answers      | `useApplication`                  | `GET /applications/{id}` (`answers`) |
+| Download file     | native `fetch`                    | `GET /public/attachments/{token}` |
+
+### Exit criteria
+
+- A job with no custom fields still applies with email + resume + consent.
+- Required custom fields block submit. Optional fields can be skipped.
+- After the first application, the form panel is read-only.
+- Recruiter detail shows answers and can download file-field uploads.
 
 ---
 

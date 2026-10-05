@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Brand } from "@/components/brand";
@@ -8,7 +9,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
     <RequireGuest>
       <div className="flex min-h-screen flex-col items-center justify-center bg-surface px-margin-sm py-space-xl sm:px-margin">
         <header className="mb-space-lg flex w-full max-w-md flex-col items-center text-center">
-          <Brand size="auth" />
+          <Link href="/">
+            <Brand size="auth" />
+          </Link>
           <p className="mt-space-xs text-body-sm font-medium text-on-surface-variant">
             AI resume-screening middleware. Not an ATS.
           </p>

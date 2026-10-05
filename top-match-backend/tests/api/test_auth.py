@@ -26,6 +26,7 @@ async def test_register_returns_profile_and_tokens(anonymous_client: AsyncClient
     body = await _register(anonymous_client)
 
     assert body["company_name"] == REGISTER_BODY["company_name"]
+    assert body["company_slug"].startswith("acme-hiring")
     assert body["email"] == REGISTER_BODY["email"]
     assert isinstance(body["id"], str)
     assert body["access_token"]
@@ -110,6 +111,7 @@ async def test_me_requires_access_token(anonymous_client: AsyncClient) -> None:
     assert with_access.json() == {
         "id": created["id"],
         "company_name": REGISTER_BODY["company_name"],
+        "company_slug": created["company_slug"],
         "email": REGISTER_BODY["email"],
     }
 
@@ -151,6 +153,21 @@ async def test_logout_revokes_refresh_token(anonymous_client: AsyncClient) -> No
 
     assert logout.status_code == 204
     assert refresh.status_code == 401
+
+
+async def test_register_duplicate_company_name_gets_distinct_slugs(
+    anonymous_client: AsyncClient,
+) -> None:
+    first = await _register(anonymous_client)
+    second = await anonymous_client.post(
+        f"{settings.API_V1_STR}/auth/register",
+        json={**REGISTER_BODY, "email": "other@acme.com"},
+    )
+
+    assert second.status_code == 201
+    assert first["company_slug"].startswith("acme-hiring")
+    assert second.json()["company_slug"].startswith("acme-hiring")
+    assert first["company_slug"] != second.json()["company_slug"]
 
 
 async def test_create_job_requires_auth(anonymous_client: AsyncClient) -> None:

@@ -1,6 +1,10 @@
-import { ApplySuccess } from "@/components/apply/apply-success";
+import { LegacyApplyRedirect } from "@/components/apply/legacy-apply-redirect";
 
-export default async function ApplyDonePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function LegacyApplyDonePage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
-  return <ApplySuccess slug={slug} />;
+  return <LegacyApplyRedirect slug={slug} suffix="/done" />;
 }

@@ -13,11 +13,15 @@ from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.exceptions import (
     ApplicationNotFoundError,
+    AttachmentAlreadyUsedError,
+    AttachmentNotFoundError,
     DuplicateApplicationError,
     DuplicateEmailError,
+    FormAnswersError,
+    FormLockedError,
     InvalidCredentialsError,
-    InvalidResumeError,
     InvalidTokenError,
+    InvalidUploadError,
     JobClosedError,
     JobNotFoundError,
     ResumeAlreadyUsedError,
@@ -164,12 +168,41 @@ def create_app() -> FastAPI:
     async def resume_too_large_handler(request: Request, exc: ResumeTooLargeError) -> JSONResponse:
         return JSONResponse(
             status_code=413,
-            content={"detail": "Resume exceeds the maximum allowed size"},
+            content={"detail": "File exceeds the maximum allowed size"},
         )
 
-    @app.exception_handler(InvalidResumeError)
-    async def invalid_resume_handler(request: Request, exc: InvalidResumeError) -> JSONResponse:
+    @app.exception_handler(InvalidUploadError)
+    async def invalid_upload_handler(request: Request, exc: InvalidUploadError) -> JSONResponse:
         return JSONResponse(status_code=400, content={"detail": exc.message})
+
+    @app.exception_handler(FormLockedError)
+    async def form_locked_handler(request: Request, exc: FormLockedError) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "The application form cannot be changed after candidates apply"},
+        )
+
+    @app.exception_handler(FormAnswersError)
+    async def form_answers_handler(request: Request, exc: FormAnswersError) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Invalid form answers", "field_errors": exc.field_errors},
+        )
+
+    @app.exception_handler(AttachmentNotFoundError)
+    async def attachment_not_found_handler(
+        request: Request, exc: AttachmentNotFoundError
+    ) -> JSONResponse:
+        return JSONResponse(status_code=404, content={"detail": "File not found"})
+
+    @app.exception_handler(AttachmentAlreadyUsedError)
+    async def attachment_already_used_handler(
+        request: Request, exc: AttachmentAlreadyUsedError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={"detail": "This file was already used on an application"},
+        )
 
     @app.exception_handler(RateLimitExceeded)
     async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
