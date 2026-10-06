@@ -11,11 +11,13 @@ import { FormWorkspaceFrame } from "@/components/forms/form-workspace-frame";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { useCreateJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { validateFormFields } from "@/lib/form-validation";
+import { richTextIsEmpty } from "@/lib/rich-text";
 import type { FormField } from "@/types/forms";
 
 const TITLE_MAX = 200;
@@ -37,7 +39,6 @@ export function CreateJobForm() {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedTitle = title.trim();
-    const trimmedDescription = description.trim();
     const trimmedRequirements = requirements.trim();
     let valid = true;
     setFormError("");
@@ -52,7 +53,7 @@ export function CreateJobForm() {
       setTitleError("");
     }
 
-    if (!trimmedDescription) {
+    if (richTextIsEmpty(description)) {
       setDescriptionError("Description is required");
       valid = false;
     } else {
@@ -81,7 +82,7 @@ export function CreateJobForm() {
     try {
       const job = await createJob.mutateAsync({
         title: trimmedTitle,
-        description: trimmedDescription,
+        description: description.trim(),
         requirements: trimmedRequirements,
         form_fields: formFields,
       });
@@ -129,14 +130,13 @@ export function CreateJobForm() {
                 </p>
               </div>
             </div>
-            <Textarea
+            <RichTextEditor
               error={descriptionError}
               id="job-description"
               label="Job Overview & Responsibilities"
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={setDescription}
               placeholder="Describe the team, mission, daily responsibilities, and technical stack..."
               required
-              rows={6}
               value={description}
             />
             <div className="flex flex-col gap-2">

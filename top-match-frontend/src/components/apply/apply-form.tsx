@@ -16,6 +16,7 @@ import { FormFieldInput } from "@/components/forms/form-field-input";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RichTextContent } from "@/components/ui/rich-text-content";
 import { useApply, useUploadAttachment, useUploadResume } from "@/hooks/use-applications";
 import { usePublicJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage, getApiFieldErrors, isNotFoundError } from "@/lib/api-error";
@@ -61,6 +62,7 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
   const [answers, setAnswers] = useState<FormAnswers>({});
   const [formError, setFormError] = useState("");
   const [pending, setPending] = useState(false);
+  const [tab, setTab] = useState<"detail" | "application">("detail");
 
   const job = jobQuery.data;
 
@@ -221,33 +223,72 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
   const closed = job.status === "closed";
 
   return (
-    <main className="overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm">
-      <section className="border-b border-outline-variant p-space-lg md:p-space-xl">
+    <main className="flex min-h-[40rem] flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-sm">
+      <section className="border-b border-outline-variant px-space-lg pt-space-lg md:px-space-xl md:pt-space-xl">
         <h1 className="break-words text-headline-xl-mobile md:text-headline-xl text-on-surface">{job.title}</h1>
-      </section>
-
-      <section className="flex flex-col gap-space-lg border-b border-outline-variant bg-surface-bright p-space-lg md:p-space-xl">
-        <div>
-          <h2 className="mb-space-xs flex items-center gap-space-sm text-headline-sm text-on-surface">
-            <Icon className="text-[20px] text-secondary" name="subject" />
-            Role Overview
-          </h2>
-          <p className="whitespace-pre-wrap break-words text-body-md leading-relaxed text-on-surface-variant">
-            {job.description}
-          </p>
-        </div>
-        <div>
-          <h2 className="mb-space-sm flex items-center gap-space-sm text-headline-sm text-on-surface">
-            <Icon className="text-[20px] text-secondary" name="rule" />
-            Requirements
-          </h2>
-          <p className="whitespace-pre-wrap break-words text-body-md leading-relaxed text-on-surface-variant">
-            {job.requirements}
-          </p>
+        <div aria-label="Application sections" className="mt-space-lg flex gap-space-lg" role="tablist">
+          <ApplyTab
+            controls="job-detail-panel"
+            id="job-detail-tab"
+            onClick={() => setTab("detail")}
+            selected={tab === "detail"}
+          >
+            Job Detail
+          </ApplyTab>
+          <ApplyTab
+            controls="job-application-panel"
+            id="job-application-tab"
+            onClick={() => setTab("application")}
+            selected={tab === "application"}
+          >
+            Job Application
+          </ApplyTab>
         </div>
       </section>
 
-      <section className="border-b border-outline-variant bg-surface-container-low p-space-lg md:p-space-xl">
+      {tab === "detail" ? (
+        <section
+          aria-labelledby="job-detail-tab"
+          className="flex min-h-[28rem] flex-1 flex-col gap-space-lg bg-surface-bright p-space-lg md:p-space-xl"
+          id="job-detail-panel"
+          role="tabpanel"
+        >
+          <div>
+            <h2 className="mb-space-xs flex items-center gap-space-sm text-headline-sm text-on-surface">
+              <Icon className="text-[20px] text-secondary" name="subject" />
+              Role Overview
+            </h2>
+            <RichTextContent
+              className="text-body-md leading-relaxed text-on-surface-variant"
+              html={job.description}
+            />
+          </div>
+          <div>
+            <h2 className="mb-space-sm flex items-center gap-space-sm text-headline-sm text-on-surface">
+              <Icon className="text-[20px] text-secondary" name="rule" />
+              Requirements
+            </h2>
+            <p className="whitespace-pre-wrap break-words text-body-md leading-relaxed text-on-surface-variant">
+              {job.requirements}
+            </p>
+          </div>
+          <div className="mt-auto pt-space-md">
+            <Button onClick={() => setTab("application")} type="button">
+              Continue to application
+              <Icon name="arrow_forward" />
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
+      {tab === "application" ? (
+        <>
+      <section
+        aria-labelledby="job-application-tab"
+        className="border-b border-outline-variant bg-surface-container-low p-space-lg md:p-space-xl"
+        id="job-application-panel"
+        role="tabpanel"
+      >
         <div className="flex items-start gap-space-md rounded-lg border border-outline-variant bg-surface-container-lowest p-space-md shadow-sm">
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container">
             <Icon className="text-[20px] text-secondary" name="verified_user" />
@@ -269,7 +310,7 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
         </div>
       </section>
 
-      <section className="p-space-lg md:p-space-xl">
+      <section className="min-h-[22rem] flex-1 p-space-lg md:p-space-xl">
         {closed ? (
           <p className="text-body-md text-on-surface-variant">
             This job is no longer accepting applications.
@@ -307,7 +348,7 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
               />
               <button
                 className={cn(
-                  "w-full rounded-xl border-2 border-dashed bg-surface-bright p-space-lg text-center transition-colors",
+                  "w-full rounded-xl border-2 border-dashed bg-surface-bright px-space-lg py-space-xl text-center transition-colors",
                   dragging ? "border-secondary" : "border-outline-variant hover:border-secondary",
                 )}
                 onClick={() => fileInputRef.current?.click()}
@@ -399,6 +440,41 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
           </form>
         )}
       </section>
+        </>
+      ) : null}
     </main>
+  );
+}
+
+function ApplyTab({
+  selected,
+  onClick,
+  id,
+  controls,
+  children,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  id: string;
+  controls: string;
+  children: string;
+}) {
+  return (
+    <button
+      aria-controls={controls}
+      aria-selected={selected}
+      className={cn(
+        "-mb-px border-b-2 px-1 pb-3 text-label-lg",
+        selected
+          ? "border-secondary text-secondary"
+          : "border-transparent text-on-surface-variant hover:text-on-surface",
+      )}
+      id={id}
+      onClick={onClick}
+      role="tab"
+      type="button"
+    >
+      {children}
+    </button>
   );
 }

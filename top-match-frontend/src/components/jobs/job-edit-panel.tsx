@@ -6,9 +6,11 @@ import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { richTextIsEmpty } from "@/lib/rich-text";
 import type { JobDetail } from "@/types/jobs";
 
 const TITLE_MAX = 200;
@@ -41,7 +43,6 @@ export function JobEditPanel({ job, onClose }: JobEditPanelProps) {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedTitle = title.trim();
-    const trimmedDescription = description.trim();
     const trimmedRequirements = requirements.trim();
     let valid = true;
     setFormError("");
@@ -56,7 +57,7 @@ export function JobEditPanel({ job, onClose }: JobEditPanelProps) {
       setTitleError("");
     }
 
-    if (!trimmedDescription) {
+    if (richTextIsEmpty(description)) {
       setDescriptionError("Description is required");
       valid = false;
     } else {
@@ -77,7 +78,7 @@ export function JobEditPanel({ job, onClose }: JobEditPanelProps) {
     try {
       await updateJob.mutateAsync({
         title: trimmedTitle,
-        description: trimmedDescription,
+        description: description.trim(),
         requirements: trimmedRequirements,
       });
       onClose();
@@ -130,13 +131,12 @@ export function JobEditPanel({ job, onClose }: JobEditPanelProps) {
               type="text"
               value={title}
             />
-            <Textarea
+            <RichTextEditor
               error={descriptionError}
               id="edit-job-description"
               label="Job Overview & Responsibilities"
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={setDescription}
               required
-              rows={6}
               value={description}
             />
             <Textarea

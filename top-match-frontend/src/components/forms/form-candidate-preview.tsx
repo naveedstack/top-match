@@ -1,7 +1,11 @@
 "use client";
 
+import { useState } from "react";
+
 import { FormFieldInput } from "@/components/forms/form-field-input";
 import { Icon } from "@/components/icon";
+import { RichTextContent } from "@/components/ui/rich-text-content";
+import { cn } from "@/lib/cn";
 import type { FormField } from "@/types/forms";
 
 type FormCandidatePreviewProps = {
@@ -33,6 +37,7 @@ export function FormCandidatePreview({
 }: FormCandidatePreviewProps) {
   const lines = requirementLines(requirements);
   const heading = title.trim() || "Job title";
+  const [tab, setTab] = useState<"detail" | "application">("detail");
 
   return (
     <div className="flex min-h-full min-w-0 max-w-full flex-col overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest shadow-md">
@@ -65,32 +70,63 @@ export function FormCandidatePreview({
           {companyName ? (
             <p className="mt-0.5 text-label-md text-on-surface-variant">{companyName}</p>
           ) : null}
+          <div className="mt-3 flex gap-4 border-b border-outline-variant" role="tablist">
+            <button
+              className={cn(
+                "-mb-px border-b-2 pb-2 text-label-md",
+                tab === "detail"
+                  ? "border-secondary text-secondary"
+                  : "border-transparent text-on-surface-variant",
+              )}
+              onClick={() => setTab("detail")}
+              type="button"
+            >
+              Job Detail
+            </button>
+            <button
+              className={cn(
+                "-mb-px border-b-2 pb-2 text-label-md",
+                tab === "application"
+                  ? "border-secondary text-secondary"
+                  : "border-transparent text-on-surface-variant",
+              )}
+              onClick={() => setTab("application")}
+              type="button"
+            >
+              Job Application
+            </button>
+          </div>
         </div>
 
-          {description.trim() ? (
-          <p className="whitespace-pre-wrap break-words text-body-sm leading-relaxed text-on-surface-variant">
-            {description}
-          </p>
-        ) : (
-          <p className="text-body-sm text-outline">Role overview appears here as you write it.</p>
-        )}
+        {tab === "detail" ? (
+          <div className="flex min-h-72 flex-col gap-4">
+            {description.trim() ? (
+              <RichTextContent
+                className="text-body-sm leading-relaxed text-on-surface-variant"
+                html={description}
+              />
+            ) : (
+              <p className="text-body-sm text-outline">Role overview appears here as you write it.</p>
+            )}
 
-        {lines.length > 0 ? (
-          <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-bright p-3">
-            <span className="block text-label-sm font-bold tracking-wider text-on-surface-variant uppercase">
-              Key Technical Requirements
-            </span>
-            <ul className="space-y-1.5 text-body-sm text-on-surface">
-              {lines.map((line) => (
-                <li className="flex items-start gap-2" key={line}>
-                  <Icon className="mt-0.5 shrink-0 text-[16px] text-secondary" name="check_circle" />
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
+            {lines.length > 0 ? (
+              <div className="space-y-2 rounded-lg border border-outline-variant bg-surface-bright p-3">
+                <span className="block text-label-sm font-bold tracking-wider text-on-surface-variant uppercase">
+                  Key Technical Requirements
+                </span>
+                <ul className="space-y-1.5 text-body-sm text-on-surface">
+                  {lines.map((line) => (
+                    <li className="flex items-start gap-2" key={line}>
+                      <Icon className="mt-0.5 shrink-0 text-[16px] text-secondary" name="check_circle" />
+                      <span>{line}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-
+        ) : (
+          <div className="flex min-h-72 flex-col gap-4">
         <div className="space-y-1 rounded-lg border border-secondary-fixed bg-surface-container-low p-2.5">
           <div className="flex items-center gap-1.5 text-label-sm font-semibold text-secondary">
             <Icon className="text-[15px]" name="verified_user" />
@@ -160,6 +196,8 @@ export function FormCandidatePreview({
             <Icon className="text-[16px]" name="arrow_forward" />
           </button>
         </div>
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-2 border-t border-outline-variant bg-surface-container-low p-3">
