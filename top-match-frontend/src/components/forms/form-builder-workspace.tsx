@@ -2,14 +2,25 @@
 
 import type { ReactNode } from "react";
 
+import { ConditionBuilder } from "@/components/forms/condition-builder";
+import {
+  FieldNotices,
+  inputClass,
+  numberOrNull,
+  ReasonInput,
+  smallInputClass,
+  Switch,
+  WeightInput,
+} from "@/components/forms/form-builder-controls";
 import { Icon } from "@/components/icon";
 import { cn } from "@/lib/cn";
+import { isConditionField, type ConditionField } from "@/lib/condition-presets";
 import {
   FILE_ACCEPT_LABEL,
   FORM_FIELD_TYPES,
+  MAX_CONDITIONS,
   MAX_FILE_FIELDS,
   MAX_FORM_FIELDS,
-  MAX_WEIGHT,
   newFormField,
   newYesNoKnockout,
   type ChoiceFormField,
@@ -17,6 +28,7 @@ import {
   type FormField,
   type FormFieldType,
   type FormWarning,
+  type GuardrailError,
   type NumberFormField,
 } from "@/types/forms";
 
@@ -55,16 +67,15 @@ const LOCKED_ROWS = [
   },
 ] as const;
 
-const inputClass =
-  "w-full min-w-0 max-w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-body-md text-on-surface outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20 disabled:opacity-60";
-
 type FormBuilderWorkspaceProps = {
   fields: FormField[];
   onChange: (fields: FormField[]) => void;
   disabled?: boolean;
   error?: string;
-  // Age-proxy warnings from the last save. They never block saving.
+  // Warnings from the last save (age proxies, salary history). They never block saving.
   warnings?: FormWarning[];
+  // Guardrail errors from the last save attempt, keyed by field id.
+  blocked?: GuardrailError[];
 };
 
 /** Keep knockout and scoring config in step with the field's options. */
@@ -93,12 +104,24 @@ export function FormBuilderWorkspace({
   disabled = false,
   error,
   warnings = [],
+  blocked = [],
 }: FormBuilderWorkspaceProps) {
-  const fileCount = fields.filter((field) => field.type === "file").length;
-  const atFieldCap = fields.length >= MAX_FORM_FIELDS;
+  // Conditions come first on the apply form; questions follow in their own order.
+  const conditions = fields.filter(isConditionField);
+  const questions = fields.filter((field) => !isConditionField(field));
+  const fileCount = questions.filter((field) => field.type === "file").length;
+  const atFieldCap = questions.length >= MAX_FORM_FIELDS;
+
+  function setQuestions(next: FormField[]) {
+    onChange([...conditions, ...next]);
+  }
+
+  function setConditions(next: ConditionField[]) {
+    onChange([...next, ...questions]);
+  }
 
   function updateField(id: string, next: FormField) {
-    onChange(fields.map((field) => (field.id === id ? next : field)));
+    setQuestions(questions.map((field) => (field.id === id ? next : field)));
   }
 
   function addField(type: FormFieldType) {
@@ -108,25 +131,25 @@ export function FormBuilderWorkspace({
     if (type === "file" && fileCount >= MAX_FILE_FIELDS) {
       return;
     }
-    onChange([...fields, newFormField(type)]);
+    setQuestions([...questions, newFormField(type)]);
   }
 
   function addYesNoKnockout() {
     if (disabled || atFieldCap) {
       return;
     }
-    onChange([...fields, newYesNoKnockout()]);
+    setQuestions([...questions, newYesNoKnockout()]);
   }
 
   function moveField(index: number, direction: -1 | 1) {
     const target = index + direction;
-    if (target < 0 || target >= fields.length) {
+    if (target < 0 || target >= questions.length) {
       return;
     }
-    const next = [...fields];
+    const next = [...questions];
     const [item] = next.splice(index, 1);
     next.splice(target, 0, item);
-    onChange(next);
+    setQuestions(next);
   }
 
   return (
@@ -140,7 +163,8 @@ export function FormBuilderWorkspace({
           <Icon className="mt-0.5 shrink-0 text-[18px] text-secondary" name="info" />
           <p>
             <span className="font-semibold text-secondary">Builder Constraints: </span>
-            Up to {MAX_FORM_FIELDS} custom fields (max {MAX_FILE_FIELDS} file uploads). Custom answers
+            Up to {MAX_CONDITIONS} job conditions and {MAX_FORM_FIELDS} custom questions (max{" "}
+            {MAX_FILE_FIELDS} file uploads). Custom answers
             are stored for recruiters and are{" "}
             <strong className="font-semibold text-on-surface">NOT</strong> sent to AI scoring.
             Knockouts and answer weights are checked in code before the resume is scored.
@@ -197,12 +221,20 @@ export function FormBuilderWorkspace({
         </div>
       </section>
 
+      <ConditionBuilder
+        blocked={blocked}
+        conditions={conditions}
+        disabled={disabled}
+        onChange={setConditions}
+        warnings={warnings}
+      />
+
       <section className="flex flex-col gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="text-headline-md font-bold text-on-surface">Custom questions</h2>
             <span className="rounded-full border border-secondary-fixed bg-surface-container px-2 py-0.5 text-label-sm font-semibold text-secondary">
-              {fields.length} of {MAX_FORM_FIELDS} fields used ({fileCount} of {MAX_FILE_FIELDS}{" "}
+              {questions.length} of {MAX_FORM_FIELDS} questions used ({fileCount} of {MAX_FILE_FIELDS}{" "}
               uploads)
             </span>
           </div>
@@ -212,22 +244,23 @@ export function FormBuilderWorkspace({
         </div>
 
         <div className="flex flex-col gap-4">
-          {fields.map((field, index) => (
+          {questions.map((field, index) => (
             <WorkspaceFieldCard
+              blocked={blocked.filter((item) => item.target === field.id)}
               disabled={disabled}
               field={field}
               fileIndex={
                 field.type === "file"
-                  ? fields.slice(0, index + 1).filter((item) => item.type === "file").length
+                  ? questions.slice(0, index + 1).filter((item) => item.type === "file").length
                   : 0
               }
               index={index}
               key={field.id}
               onChange={(next) => updateField(field.id, next)}
-              onDelete={() => onChange(fields.filter((item) => item.id !== field.id))}
+              onDelete={() => setQuestions(questions.filter((item) => item.id !== field.id))}
               onDown={() => moveField(index, 1)}
               onUp={() => moveField(index, -1)}
-              total={fields.length}
+              total={questions.length}
               warnings={warnings.filter((warning) => warning.field_id === field.id)}
             />
           ))}
@@ -281,6 +314,7 @@ function WorkspaceFieldCard({
   onUp,
   onDown,
   warnings,
+  blocked,
 }: {
   field: FormField;
   index: number;
@@ -292,6 +326,7 @@ function WorkspaceFieldCard({
   onUp: () => void;
   onDown: () => void;
   warnings: FormWarning[];
+  blocked: GuardrailError[];
 }) {
   const isKnockout =
     (field.type === "number" || field.type === "dropdown" || field.type === "radio") &&
@@ -535,16 +570,7 @@ function WorkspaceFieldCard({
         <ChoiceScoringEditor disabled={disabled} field={field} onChange={onChange} />
       ) : null}
 
-      {warnings.map((warning) => (
-        <p
-          className="mt-3 flex items-start gap-1.5 rounded-lg border border-status-knocked-out/30 bg-status-knocked-out-container p-2.5 text-body-sm text-status-knocked-out"
-          key={warning.message}
-          role="status"
-        >
-          <Icon className="mt-0.5 shrink-0 text-[16px]" name="warning" />
-          {warning.message}
-        </p>
-      ))}
+      <FieldNotices blocked={blocked} warnings={warnings} />
 
       {field.type === "file" ? (
         <>
@@ -599,13 +625,6 @@ function WorkspaceFieldCard({
   );
 }
 
-const smallInputClass =
-  "w-16 rounded border border-outline-variant px-1.5 py-0.5 text-center font-mono text-xs disabled:opacity-60";
-
-function numberOrNull(raw: string): number | null {
-  return raw === "" ? null : Number(raw);
-}
-
 function ConfigSection({
   title,
   enabled,
@@ -629,33 +648,6 @@ function ConfigSection({
       </div>
       {enabled ? <div className="mt-2.5 flex flex-col gap-2.5">{children}</div> : null}
     </div>
-  );
-}
-
-function ReasonInput({
-  value,
-  disabled,
-  onChange,
-}: {
-  value: string;
-  disabled: boolean;
-  onChange: (reason: string) => void;
-}) {
-  return (
-    <label className="block min-w-0">
-      <span className="mb-1 block text-label-sm font-semibold text-on-surface">
-        Reason shown to you when someone fails
-      </span>
-      <input
-        className={inputClass}
-        disabled={disabled}
-        maxLength={300}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="e.g. Not authorized to work in Pakistan"
-        type="text"
-        value={value}
-      />
-    </label>
   );
 }
 
@@ -767,7 +759,7 @@ function NumberKnockoutEditor({
                 })
               }
               type="number"
-              value={knockout.min}
+              value={knockout.min ?? ""}
             />
           </label>
           <ReasonInput
@@ -778,32 +770,6 @@ function NumberKnockoutEditor({
         </>
       ) : null}
     </ConfigSection>
-  );
-}
-
-function WeightInput({
-  weight,
-  disabled,
-  onChange,
-}: {
-  weight: number;
-  disabled: boolean;
-  onChange: (weight: number) => void;
-}) {
-  return (
-    <label className="flex items-center gap-1.5 text-label-sm text-on-surface">
-      Weight (0.5–{MAX_WEIGHT}):
-      <input
-        className={smallInputClass}
-        disabled={disabled}
-        max={MAX_WEIGHT}
-        min={0.5}
-        onChange={(event) => onChange(Number(event.target.value) || 1)}
-        step={0.5}
-        type="number"
-        value={weight}
-      />
-    </label>
   );
 }
 
@@ -926,46 +892,5 @@ function NumberScoringEditor({
         </div>
       ) : null}
     </ConfigSection>
-  );
-}
-
-function Switch({
-  checked,
-  disabled,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  disabled: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-}) {
-  return (
-    <button
-      aria-checked={checked}
-      className={cn(
-        "flex min-w-0 items-center gap-2 text-left",
-        disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer",
-      )}
-      disabled={disabled}
-      onClick={() => onChange(!checked)}
-      role="switch"
-      type="button"
-    >
-      <span
-        className={cn(
-          "relative inline-flex h-4 w-8 shrink-0 rounded-full transition-colors",
-          checked ? "bg-secondary" : "bg-outline-variant",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 size-3 rounded-full bg-surface-container-lowest shadow-sm transition-[left]",
-            checked ? "left-4" : "left-0.5",
-          )}
-        />
-      </span>
-      <span className="text-label-sm font-medium text-on-surface">{label}</span>
-    </button>
   );
 }

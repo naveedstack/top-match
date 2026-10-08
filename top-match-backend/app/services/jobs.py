@@ -5,13 +5,15 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import FormLockedError, JobNotFoundError
+from app.core.exceptions import FormLockedError, JobNotFoundError, ProtectedCharacteristicError
 from app.core.notices import AI_SCREENING_NOTICE, SCREENING_DISCLAIMER, privacy_notice
 from app.models import Job, JobStatus, Recruiter
 from app.repositories import jobs as jobs_repo
+from app.repositories import phase_results as phase_results_repo
 from app.schemas.forms import FormField, dump_form_fields, parse_form_fields
 from app.schemas.jobs import (
     ApplicationCounts,
+    ConditionKnockoutCount,
     FormWarningItem,
     JobCreate,
     JobDetailResponse,
@@ -20,13 +22,39 @@ from app.schemas.jobs import (
     JobUpdate,
     PublicJobResponse,
 )
-from app.services.screening import age_proxy_warnings
+from app.services import conditions, guardrail
+from app.services.screening import form_warnings
 
 _SLUG_ATTEMPTS = 8
 
 
 def public_apply_url(company_slug: str, slug: str) -> str:
     return f"{settings.PUBLIC_APP_URL.rstrip('/')}/{company_slug}/{slug}"
+
+
+def _warnings(fields: list[FormField]) -> list[FormWarningItem]:
+    """Soft warnings, plus guardrail hits on fields saved before the guardrail existed."""
+    warnings = [
+        FormWarningItem(field_id=item.field_id, message=item.message)
+        for item in form_warnings(fields)
+    ]
+    warnings.extend(
+        FormWarningItem(
+            field_id=UUID(item.target),
+            message=f"{item.message} It would be blocked if saved today. {item.suggestion}",
+        )
+        for item in guardrail.check_form_fields(fields)
+    )
+    return warnings
+
+
+def _enforce_guardrail(requirements: str | None, fields: list[FormField] | None) -> None:
+    violations = [
+        *guardrail.check_requirements(requirements or ""),
+        *guardrail.check_form_fields(fields or []),
+    ]
+    if violations:
+        raise ProtectedCharacteristicError([item.dump() for item in violations])
 
 
 def to_job_response(job: Job, recruiter: Recruiter) -> JobResponse:
@@ -37,10 +65,7 @@ def to_job_response(job: Job, recruiter: Recruiter) -> JobResponse:
         description=job.description,
         requirements=job.requirements,
         form_fields=fields,
-        form_warnings=[
-            FormWarningItem(field_id=item.field_id, message=item.message)
-            for item in age_proxy_warnings(fields)
-        ],
+        form_warnings=_warnings(fields),
         company_slug=recruiter.company_slug,
         public_slug=job.public_slug,
         public_url=public_apply_url(recruiter.company_slug, job.public_slug),
@@ -51,8 +76,8 @@ def to_job_response(job: Job, recruiter: Recruiter) -> JobResponse:
 
 
 def public_form_fields(raw: object) -> list[FormField]:
-    """Candidates never see knockout rules or answer weights."""
-    hidden = ("knockout", "scoring")
+    """Candidates never see knockout rules, answer weights or condition settings."""
+    hidden = ("knockout", "scoring", "condition")
     return [
         field.model_copy(update={key: None for key in hidden if hasattr(field, key)})
         for field in parse_form_fields(raw)
@@ -65,6 +90,7 @@ def to_public_response(job: Job) -> PublicJobResponse:
         description=job.description,
         requirements=job.requirements,
         form_fields=public_form_fields(job.form_fields),
+        before_you_apply=conditions.before_you_apply(parse_form_fields(job.form_fields)),
         company_slug=job.recruiter.company_slug,
         status=job.status,
         privacy_notice=privacy_notice(),
@@ -89,6 +115,7 @@ async def get_owned_job(session: AsyncSession, job_id: UUID, recruiter_id: UUID)
 
 
 async def create_job(session: AsyncSession, recruiter: Recruiter, data: JobCreate) -> Job:
+    _enforce_guardrail(data.requirements, data.form_fields)
     job = Job(
         recruiter_id=recruiter.id,
         title=data.title,
@@ -124,6 +151,19 @@ async def list_jobs_with_counts(
     ]
 
 
+async def _condition_knockouts(session: AsyncSession, job: Job) -> list[ConditionKnockoutCount]:
+    counts = await phase_results_repo.count_knockouts_by_field(session, job.id)
+    result: list[ConditionKnockoutCount] = []
+    for field, _condition in conditions.must_conditions(parse_form_fields(job.form_fields)):
+        stopped, moved_forward = counts.get(field.id, (0, 0))
+        result.append(
+            ConditionKnockoutCount(
+                field_id=field.id, label=field.label, stopped=stopped, moved_forward=moved_forward
+            )
+        )
+    return result
+
+
 async def get_job_detail(
     session: AsyncSession, job_id: UUID, recruiter: Recruiter
 ) -> JobDetailResponse:
@@ -134,6 +174,7 @@ async def get_job_detail(
         application_counts=ApplicationCounts.from_status_map(counts),
         screening_disclaimer=SCREENING_DISCLAIMER,
         form_locked=await jobs_repo.has_applications(session, job.id),
+        condition_knockouts=await _condition_knockouts(session, job),
     )
 
 
@@ -146,6 +187,7 @@ async def update_job(
         if await jobs_repo.has_applications(session, job.id):
             raise FormLockedError
         updates["form_fields"] = dump_form_fields(data.form_fields or [])
+    _enforce_guardrail(data.requirements, data.form_fields)
     for field, value in updates.items():
         setattr(job, field, value)
     await session.commit()

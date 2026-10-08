@@ -9,7 +9,12 @@ import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
 import { useUpdateJob } from "@/hooks/use-jobs";
-import { getApiErrorMessage } from "@/lib/api-error";
+import {
+  REQUIREMENTS_TARGET,
+  getApiErrorMessage,
+  getApiGuardrailErrors,
+  guardrailMessage,
+} from "@/lib/api-error";
 import { richTextIsEmpty } from "@/lib/rich-text";
 import type { JobDetail } from "@/types/jobs";
 
@@ -83,6 +88,11 @@ export function JobEditPanel({ job, onClose }: JobEditPanelProps) {
       });
       onClose();
     } catch (error) {
+      setRequirementsError(
+        guardrailMessage(
+          getApiGuardrailErrors(error).filter((item) => item.target === REQUIREMENTS_TARGET),
+        ),
+      );
       setFormError(getApiErrorMessage(error));
     }
   }

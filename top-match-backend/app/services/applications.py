@@ -49,8 +49,8 @@ from app.schemas.evaluation import Citation
 from app.schemas.forms import parse_form_fields
 from app.schemas.jobs import ApplicationCounts
 from app.services import attachments as attachments_service
+from app.services import conditions, pipeline, screening, screening_queue
 from app.services import jobs as jobs_service
-from app.services import pipeline, screening, screening_queue
 from app.services.forms import validate_answers
 
 
@@ -263,12 +263,15 @@ def to_detail(application: Application) -> ApplicationDetailResponse:
             value = raw
         else:
             value = None
+        outcome = conditions.evaluate_condition(field, raw)
         answers.append(
             ApplicationAnswerItem(
                 field_id=field.id,
                 label=field.label,
                 type=field.type,
                 value=value,
+                condition=None if outcome is None else outcome.condition,
+                condition_verdict=None if outcome is None else outcome.verdict,
             )
         )
     return ApplicationDetailResponse(

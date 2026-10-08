@@ -28,7 +28,8 @@ Screening runs in phases: `accept` → `knockout` → `answers` → `resume`. Ea
 `phase_results` row; a failed phase stops the run, so only applications that pass the
 code-only knockout checks reach OCR and the model. The detail response includes
 `current_phase`, `stopped_phase`, `stop_code`, `stop_reason`, `answers_score` (kept separate
-from the resume `score`) and `phase_results`.
+from the resume `score`) and `phase_results`. Answers to job conditions carry the
+`condition` and a `condition_verdict` (`pass`, `partial`, `fail` or `not_scored`).
 
 Recruiters poll the job leaderboard, open `GET /api/v1/applications/{id}` for the
 evaluation plus a 15-minute `resume_url`, and act on applicants that were not scored:

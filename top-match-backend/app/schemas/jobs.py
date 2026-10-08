@@ -79,6 +79,15 @@ class FormWarningItem(BaseModel):
     message: str
 
 
+class ConditionKnockoutCount(BaseModel):
+    """Applicants a must condition ever stopped, and how many were moved forward after."""
+
+    field_id: UUID
+    label: str
+    stopped: int
+    moved_forward: int
+
+
 class JobResponse(BaseModel):
     id: UUID
     title: str
@@ -102,6 +111,7 @@ class JobDetailResponse(JobResponse):
     application_counts: ApplicationCounts
     screening_disclaimer: str
     form_locked: bool
+    condition_knockouts: list[ConditionKnockoutCount]
 
 
 class PublicJobResponse(BaseModel):
@@ -109,6 +119,7 @@ class PublicJobResponse(BaseModel):
     description: str
     requirements: str
     form_fields: list[FormField]
+    before_you_apply: list[str]
     company_slug: str
     status: JobStatus
     privacy_notice: str

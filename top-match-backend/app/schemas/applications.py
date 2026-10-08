@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
 from app.models import ApplicationStatus, PhaseOutcome, ScreeningPhase
+from app.schemas.conditions import ConditionVerdict, JobCondition
 from app.schemas.evaluation import Citation
 from app.schemas.jobs import ApplicationCounts
 
@@ -30,6 +31,8 @@ class ApplicationAnswerItem(BaseModel):
     value: str | float | list[str] | None = None
     filename: str | None = None
     download_url: str | None = None
+    condition: JobCondition | None = None
+    condition_verdict: ConditionVerdict | None = None
 
 
 class ResumeUploaded(BaseModel):

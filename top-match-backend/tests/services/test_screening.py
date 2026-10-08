@@ -6,9 +6,9 @@ from pydantic import ValidationError
 
 from app.schemas.forms import FormField, form_fields_adapter
 from app.services.screening import (
-    age_proxy_warnings,
     config_version,
     evaluate_knockouts,
+    form_warnings,
     score_answers,
 )
 
@@ -174,14 +174,11 @@ def test_scored_options_must_exist() -> None:
         _fields(raw)
 
 
-@pytest.mark.parametrize(
-    "label",
-    ["Year of graduation", "Date of birth", "What is your age?", "When did you graduate?"],
-)
-def test_age_proxy_labels_warn(label: str) -> None:
+@pytest.mark.parametrize("label", ["Year of graduation", "When did you graduate?"])
+def test_graduation_year_knockout_warns(label: str) -> None:
     raw = _dropdown(label=label)
 
-    warnings = age_proxy_warnings(_fields(raw))
+    warnings = form_warnings(_fields(raw))
 
     assert [str(item.field_id) for item in warnings] == [raw["id"]]
 
@@ -193,7 +190,7 @@ def test_experience_cap_warns() -> None:
         knockout={"reason": "Too senior", "allowed_values": ["3-5", "6-10"]},
     )
 
-    assert len(age_proxy_warnings(_fields(raw))) == 1
+    assert len(form_warnings(_fields(raw))) == 1
 
 
 def test_ordinary_knockouts_do_not_warn() -> None:
@@ -209,8 +206,8 @@ def test_ordinary_knockouts_do_not_warn() -> None:
         "required": False,
     }
 
-    assert age_proxy_warnings(_fields(_yes_no(), _years(), experience_floor)) == []
-    assert age_proxy_warnings(_fields(plain_age_question)) == []
+    assert form_warnings(_fields(_yes_no(), _years(), experience_floor)) == []
+    assert form_warnings(_fields(plain_age_question)) == []
 
 
 def test_config_version_is_stable() -> None:

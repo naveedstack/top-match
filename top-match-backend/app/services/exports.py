@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.exceptions import ApplicationNotFoundError
 from app.core.notices import SCREENING_DISCLAIMER
-from app.models import Application, ExportEvent, Recruiter
+from app.models import Application, ExportEvent, PhaseOutcome, Recruiter, ScreeningPhase
 from app.repositories import applications as applications_repo
 from app.repositories import exports as exports_repo
 from app.schemas.applications import ExportRequest
-from app.schemas.forms import parse_form_fields
+from app.schemas.conditions import ConditionImportance
+from app.schemas.forms import FormField, condition_of, parse_form_fields
+from app.services import conditions
 from app.services import jobs as jobs_service
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
@@ -25,7 +27,13 @@ _CSV_HEADER = [
     "applied at",
     "stopped at",
     "reason",
+    "stopped by condition",
 ]
+_IMPORTANCE_LABEL: dict[ConditionImportance, str] = {
+    "must": "Must",
+    "preferred": "Preferred",
+    "info": "Info only",
+}
 
 
 def escape_csv_cell(value: object) -> str:
@@ -39,12 +47,29 @@ def _join(values: list[str]) -> str:
     return "; ".join(values)
 
 
+def _column_label(field: FormField) -> str:
+    condition = condition_of(field)
+    if condition is None:
+        return field.label
+    return f"{field.label} ({_IMPORTANCE_LABEL[condition.importance]})"
+
+
+def _stopping_conditions(application: Application, fields: list[FormField]) -> list[str]:
+    """Conditions that knocked the application out, if it is still stopped at knockout."""
+    if application.stopped_phase != ScreeningPhase.KNOCKOUT:
+        return []
+    for result in reversed(application.phase_results):
+        if result.phase == ScreeningPhase.KNOCKOUT and result.outcome == PhaseOutcome.FAIL:
+            return conditions.failed_condition_labels(fields, result.reasons)
+    return []
+
+
 def render_csv(rows: list[tuple[int, Application]], form_fields: object | None = None) -> str:
     fields = parse_form_fields(form_fields)
     buffer = io.StringIO()
     writer = csv.writer(buffer)
     writer.writerow([escape_csv_cell(SCREENING_DISCLAIMER)])
-    writer.writerow(_CSV_HEADER + [escape_csv_cell(field.label) for field in fields])
+    writer.writerow(_CSV_HEADER + [escape_csv_cell(_column_label(field)) for field in fields])
     for rank, application in rows:
         evaluation = application.evaluation
         strengths = [] if evaluation is None else list(evaluation.key_strengths)
@@ -76,6 +101,7 @@ def render_csv(rows: list[tuple[int, Application]], form_fields: object | None =
                     "" if application.stopped_phase is None else application.stopped_phase.value
                 ),
                 escape_csv_cell(application.stop_reason),
+                escape_csv_cell(_join(_stopping_conditions(application, fields))),
                 *[escape_csv_cell(item) for item in extra],
             ]
         )

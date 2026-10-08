@@ -54,7 +54,7 @@ def _dropdown_field(**overrides: object) -> dict[str, object]:
         "type": "dropdown",
         "label": "Work authorization",
         "required": True,
-        "options": ["Citizen", "Visa"],
+        "options": ["Authorized", "Needs sponsorship"],
     }
     field.update(overrides)
     return field
@@ -268,7 +268,7 @@ async def test_answer_validation_rules(client: AsyncClient) -> None:
             "answers": {
                 str(text["id"]): "Hi",
                 str(number["id"]): 3,
-                str(dropdown["id"]): "Citizen",
+                str(dropdown["id"]): "Authorized",
                 str(boxes["id"]): ["Python"],
                 extra_id: "nope",
             },
@@ -283,7 +283,7 @@ async def test_answer_validation_rules(client: AsyncClient) -> None:
             "answers": {
                 str(text["id"]): "Hi",
                 str(number["id"]): 3.5,
-                str(dropdown["id"]): "Citizen",
+                str(dropdown["id"]): "Authorized",
                 str(boxes["id"]): ["Python"],
             },
         },

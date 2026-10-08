@@ -5,6 +5,15 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, field_validator, model_validator
 
+from app.schemas.conditions import (
+    MAX_CONDITIONS,
+    ORDERED_SCALES,
+    PRESET_FIELD_TYPE,
+    JobCondition,
+    ScaleDirection,
+    is_contiguous_from,
+)
+
 MAX_FORM_FIELDS = 20
 MAX_FILE_FIELDS = 5
 LABEL_MAX = 200
@@ -77,9 +86,18 @@ class ChoiceKnockout(KnockoutBase):
 
 
 class NumberKnockout(KnockoutBase):
-    """Fails when the answer is below min."""
+    """Fails when the answer is below min or above max."""
 
-    min: float
+    min: float | None = None
+    max: float | None = None
+
+    @model_validator(mode="after")
+    def check_bounds(self) -> NumberKnockout:
+        if self.min is None and self.max is None:
+            raise ValueError("a number knockout needs a min or a max")
+        if self.min is not None and self.max is not None and self.min > self.max:
+            raise ValueError("knockout min must be less than or equal to max")
+        return self
 
 
 class ChoiceScoring(ConfigModel):
@@ -97,10 +115,33 @@ class ChoiceScoring(ConfigModel):
 
 
 class NumberScoring(ConfigModel):
-    """Full points at or above target, scaled linearly below it."""
+    """Full points on the target's side ("at_least" or "at_most"), scaled linearly beyond it."""
 
     weight: float = Field(gt=0, le=MAX_WEIGHT)
     target: float = Field(gt=0)
+    direction: ScaleDirection = "at_least"
+
+
+def _check_condition(
+    condition: JobCondition | None,
+    field_type: str,
+    *,
+    has_knockout: bool,
+    has_scoring: bool,
+) -> None:
+    """Importance decides the mechanism: must = knockout, preferred = scoring, info = neither."""
+    if condition is None:
+        return
+    if PRESET_FIELD_TYPE[condition.preset] != field_type:
+        raise ValueError(
+            f"{condition.preset} conditions must be {PRESET_FIELD_TYPE[condition.preset]} fields"
+        )
+    expected = {"must": (True, False), "preferred": (False, True), "info": (False, False)}
+    if (has_knockout, has_scoring) != expected[condition.importance]:
+        raise ValueError(
+            "must conditions need a knockout, preferred conditions need scoring, "
+            "and info conditions need neither"
+        )
 
 
 class TextFormField(FormFieldBase):
@@ -116,6 +157,7 @@ class NumberFormField(FormFieldBase):
     integer_only: bool = False
     knockout: NumberKnockout | None = None
     scoring: NumberScoring | None = None
+    condition: JobCondition | None = None
 
     @model_validator(mode="after")
     def min_lte_max(self) -> NumberFormField:
@@ -123,7 +165,28 @@ class NumberFormField(FormFieldBase):
             raise ValueError("min must be less than or equal to max")
         if self.knockout is not None and not self.required:
             raise ValueError("knockout questions must be required")
+        _check_condition(
+            self.condition,
+            self.type,
+            has_knockout=self.knockout is not None,
+            has_scoring=self.scoring is not None,
+        )
+        self._check_salary_matches_range()
         return self
+
+    def _check_salary_matches_range(self) -> None:
+        """Salary knockout and scoring must use the condition's range maximum."""
+        salary = None if self.condition is None else self.condition.salary
+        if salary is None:
+            return
+        if self.knockout is not None and (
+            self.knockout.min is not None or self.knockout.max != salary.max
+        ):
+            raise ValueError("a salary knockout must use the range maximum as its only limit")
+        if self.scoring is not None and (
+            self.scoring.direction != "at_most" or self.scoring.target != salary.max
+        ):
+            raise ValueError("salary scoring must target the range maximum, at most")
 
 
 class ChoiceFormField(FormFieldBase):
@@ -152,8 +215,10 @@ class ChoiceFormField(FormFieldBase):
 
 
 class KnockoutChoiceFormField(ChoiceFormField):
+    type: Literal["dropdown", "radio"]
     knockout: ChoiceKnockout | None = None
     scoring: ChoiceScoring | None = None
+    condition: JobCondition | None = None
 
     @model_validator(mode="after")
     def check_knockout_and_scoring(self) -> KnockoutChoiceFormField:
@@ -163,7 +228,29 @@ class KnockoutChoiceFormField(ChoiceFormField):
             if not set(self.knockout.allowed_values) <= set(self.options):
                 raise ValueError("allowed values must be field options")
         self._check_option_scores(self.scoring)
+        _check_condition(
+            self.condition,
+            self.type,
+            has_knockout=self.knockout is not None,
+            has_scoring=self.scoring is not None,
+        )
+        self._check_ordered_scale()
         return self
+
+    def _check_ordered_scale(self) -> None:
+        """Scale presets keep their fixed options; a knockout passes one end of the scale."""
+        if self.condition is None or self.condition.preset not in ORDERED_SCALES:
+            return
+        scale, direction = ORDERED_SCALES[self.condition.preset]
+        if tuple(self.options) != scale:
+            raise ValueError(f"options must be {', '.join(scale)} in that order")
+        if self.knockout is not None and not is_contiguous_from(
+            self.knockout.allowed_values, scale, direction
+        ):
+            limit = "minimum" if direction == "at_least" else "maximum"
+            raise ValueError(
+                f"allowed values must run from a {limit} level to the end of the scale"
+            )
 
 
 class DropdownFormField(KnockoutChoiceFormField):
@@ -209,9 +296,18 @@ type FormField = Annotated[
 form_fields_adapter: TypeAdapter[list[FormField]] = TypeAdapter(list[FormField])
 
 
+def condition_of(field: FormField) -> JobCondition | None:
+    return (
+        field.condition if isinstance(field, (NumberFormField, KnockoutChoiceFormField)) else None
+    )
+
+
 def validate_form_fields(fields: list[FormField]) -> list[FormField]:
-    if len(fields) > MAX_FORM_FIELDS:
-        raise ValueError(f"A form can have at most {MAX_FORM_FIELDS} custom fields")
+    conditions = sum(1 for field in fields if condition_of(field) is not None)
+    if len(fields) - conditions > MAX_FORM_FIELDS:
+        raise ValueError(f"A form can have at most {MAX_FORM_FIELDS} custom questions")
+    if conditions > MAX_CONDITIONS:
+        raise ValueError(f"A form can have at most {MAX_CONDITIONS} job conditions")
     ids = [field.id for field in fields]
     if len(ids) != len(set(ids)):
         raise ValueError("Field ids must be unique")

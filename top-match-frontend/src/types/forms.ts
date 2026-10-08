@@ -16,7 +16,8 @@ export type ChoiceKnockout = {
 
 export type NumberKnockout = {
   reason: string;
-  min: number;
+  min?: number | null;
+  max?: number | null;
 };
 
 export type ChoiceScoring = {
@@ -27,6 +28,45 @@ export type ChoiceScoring = {
 export type NumberScoring = {
   weight: number;
   target: number;
+  // "at_most" gives full points at or below the target (expected salary).
+  direction?: "at_least" | "at_most";
+};
+
+export type ConditionPreset =
+  | "work_authorization"
+  | "location"
+  | "work_mode"
+  | "working_hours"
+  | "english_level"
+  | "notice_period"
+  | "expected_salary"
+  | "credential"
+  | "travel";
+
+export type ConditionImportance = "must" | "preferred" | "info";
+
+export type ConditionVerdict = "pass" | "partial" | "fail" | "not_scored";
+
+export type SalaryRange = {
+  currency: string;
+  min: number;
+  max: number;
+};
+
+export type JobCondition = {
+  preset: ConditionPreset;
+  importance: ConditionImportance;
+  // Candidate-facing line shown under "Before you apply" for must conditions.
+  summary: string;
+  salary?: SalaryRange | null;
+};
+
+export type GuardrailError = {
+  // A form field id, or "requirements".
+  target: string;
+  category: string;
+  message: string;
+  suggestion: string;
 };
 
 export type FormWarning = {
@@ -47,6 +87,7 @@ export type NumberFormField = FormFieldBase & {
   integer_only: boolean;
   knockout?: NumberKnockout | null;
   scoring?: NumberScoring | null;
+  condition?: JobCondition | null;
 };
 
 export type ChoiceFormField = FormFieldBase & {
@@ -55,6 +96,8 @@ export type ChoiceFormField = FormFieldBase & {
   // Only dropdown and radio fields can be knockouts.
   knockout?: ChoiceKnockout | null;
   scoring?: ChoiceScoring | null;
+  // Only dropdown and radio fields can be job conditions.
+  condition?: JobCondition | null;
 };
 
 export type FileFormField = FormFieldBase & {
@@ -73,6 +116,8 @@ export type ApplicationAnswer = {
   value: FormAnswerValue;
   filename?: string | null;
   download_url?: string | null;
+  condition?: JobCondition | null;
+  condition_verdict?: ConditionVerdict | null;
 };
 
 export const FILE_ACCEPT_MIME: Record<FileAccept, string> = {
@@ -115,6 +160,7 @@ export function newYesNoKnockout(): ChoiceFormField {
 }
 
 export const MAX_FORM_FIELDS = 20;
+export const MAX_CONDITIONS = 10;
 export const MAX_FILE_FIELDS = 5;
 export const TEXT_MAX_LENGTH_DEFAULT = 500;
 export const TEXT_MAX_LENGTH_CAP = 5000;

@@ -168,7 +168,11 @@ async def list_for_export(
 ) -> list[Application]:
     stmt = (
         select(Application)
-        .options(selectinload(Application.evaluation), selectinload(Application.attachments))
+        .options(
+            selectinload(Application.evaluation),
+            selectinload(Application.attachments),
+            selectinload(Application.phase_results),
+        )
         .where(Application.job_id == job_id)
         .order_by(Application.score.desc().nulls_last(), Application.created_at.asc())
     )

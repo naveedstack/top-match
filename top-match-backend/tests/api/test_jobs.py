@@ -160,6 +160,7 @@ async def test_public_job_returns_only_public_fields(client: AsyncClient) -> Non
         "description",
         "requirements",
         "form_fields",
+        "before_you_apply",
         "company_slug",
         "status",
         "privacy_notice",

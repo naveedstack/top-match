@@ -43,10 +43,18 @@ export type JobListItem = Job & {
   application_counts: ApplicationCounts;
 };
 
+export type ConditionKnockoutCount = {
+  field_id: string;
+  label: string;
+  stopped: number;
+  moved_forward: number;
+};
+
 export type JobDetail = Job & {
   application_counts: ApplicationCounts;
   screening_disclaimer: string;
   form_locked: boolean;
+  condition_knockouts: ConditionKnockoutCount[];
 };
 
 export type PublicJob = {
@@ -54,6 +62,7 @@ export type PublicJob = {
   description: string;
   requirements: string;
   form_fields: FormField[];
+  before_you_apply: string[];
   company_slug: string;
   status: JobStatus;
   privacy_notice: string;

@@ -39,6 +39,7 @@ from app.schemas.forms import parse_form_fields
 from app.services import evaluation as evaluation_service
 from app.services import screening
 from app.services.ingestion import extract_text
+from app.services.redaction import redact_resume
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,11 @@ async def _resume(
     job: JobLike,
     completer: EvaluationCompleter | None,
 ) -> PhaseRun:
-    """OCR the page images and ask the model. Runs with no open session."""
+    """OCR the page images, redact personal details and ask the model. No open session.
+
+    The model sees and quotes are verified against the redacted text; the original text is
+    kept for the recruiter. Only the number of removed lines is recorded.
+    """
     phase = ScreeningPhase.RESUME
     unreadable = "Resume text could not be read"
     try:
@@ -191,13 +196,15 @@ async def _resume(
     if ingestion.too_empty:
         return _error(phase, ReasonCode.UNREADABLE, unreadable)
 
+    redaction = redact_resume(ingestion.text)
+    redaction_evidence = {"redacted_lines": redaction.removed_lines}
     try:
         async with _semaphore():
-            result = await evaluation_service.evaluate(job, ingestion.text, completer=completer)
+            result = await evaluation_service.evaluate(job, redaction.text, completer=completer)
     except EvaluationFailedError as exc:
         _log_failure("evaluation", application_id, exc)
         run = _error(phase, ReasonCode.SCORING_FAILED, "Scoring failed")
-        return replace(run, extracted_text=ingestion.text)
+        return replace(run, evidence=redaction_evidence, extracted_text=ingestion.text)
 
     version = screening.config_version(
         {"description": job.description, "requirements": job.requirements}
@@ -207,6 +214,7 @@ async def _resume(
             phase,
             PhaseOutcome.FAIL,
             reasons=(Reason(ReasonCode.NOT_RESUME, result.refusal_reason or "Not a resume"),),
+            evidence=redaction_evidence,
             config_version=version,
             status=ApplicationStatus.REFUSED,
             evaluation=result,
@@ -215,7 +223,7 @@ async def _resume(
     return PhaseRun(
         phase,
         PhaseOutcome.REVIEW if result.needs_review else PhaseOutcome.PASS,
-        evidence={"score": result.score},
+        evidence={"score": result.score, **redaction_evidence},
         config_version=version,
         status=ApplicationStatus.SCORED,
         evaluation=result,

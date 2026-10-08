@@ -82,3 +82,11 @@ class EvaluationFailedError(Exception):
 
 class ApplicationNotFoundError(Exception):
     """Raised when an application is missing or is not owned by the current recruiter."""
+
+
+class ProtectedCharacteristicError(Exception):
+    """Raised when a job's questions, conditions or requirements screen on personal traits."""
+
+    def __init__(self, violations: list[dict[str, str]]) -> None:
+        self.violations = violations
+        super().__init__("Job screens on protected characteristics")

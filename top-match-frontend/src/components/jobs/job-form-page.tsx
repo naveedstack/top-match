@@ -12,9 +12,9 @@ import { Icon } from "@/components/icon";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/auth-context";
 import { useJob, useUpdateJob } from "@/hooks/use-jobs";
-import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
+import { getApiErrorMessage, getApiGuardrailErrors, isNotFoundError } from "@/lib/api-error";
 import { validateFormFields } from "@/lib/form-validation";
-import type { FormField } from "@/types/forms";
+import type { FormField, GuardrailError } from "@/types/forms";
 import { totalApplications } from "@/types/jobs";
 
 function displayUrl(url: string): string {
@@ -33,6 +33,7 @@ export function JobFormPage({ jobId }: { jobId: string }) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
   const [savedWithWarnings, setSavedWithWarnings] = useState(false);
+  const [blockedFields, setBlockedFields] = useState<GuardrailError[]>([]);
 
   const draft = fields ?? job?.form_fields ?? [];
   const locked = job?.form_locked ?? false;
@@ -68,12 +69,13 @@ export function JobFormPage({ jobId }: { jobId: string }) {
     try {
       const saved = await updateJob.mutateAsync({ form_fields: draft });
       if (saved.form_warnings.length > 0) {
-        // Saved, but stay so the recruiter sees the age-proxy warnings on the fields.
+        // Saved, but stay so the recruiter sees the warnings on the fields.
         setSavedWithWarnings(true);
         return;
       }
       router.push(`/jobs/${jobId}`);
     } catch (error) {
+      setBlockedFields(getApiGuardrailErrors(error));
       setFormError(getApiErrorMessage(error));
     }
   }
@@ -120,17 +122,19 @@ export function JobFormPage({ jobId }: { jobId: string }) {
             {formError ? <AuthErrorBanner message={formError} /> : null}
             {savedWithWarnings ? (
               <p className="rounded-lg border border-outline-variant bg-surface-container-low p-space-sm text-body-sm text-on-surface-variant">
-                Form saved. Some knockout questions may act as age filters; review the warnings
-                below before sharing the apply link.
+                Form saved with warnings. Review them on the questions below before sharing the
+                apply link.
               </p>
             ) : null}
             <FormBuilderWorkspace
+              blocked={blockedFields}
               disabled={locked}
               error={fieldsError}
               fields={draft}
               onChange={(next) => {
                 setFieldsError("");
                 setSavedWithWarnings(false);
+                setBlockedFields([]);
                 setFields(next);
               }}
               warnings={job.form_warnings}

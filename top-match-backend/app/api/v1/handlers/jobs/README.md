@@ -22,7 +22,23 @@ plus a recruiter-written `reason`; the field must be `required`). A yes/no knock
 radio field with `Yes`/`No` options. Radio, dropdown, checkboxes and number fields may
 carry `scoring` weights for the code-only answers score. Neither is returned on the public
 job endpoint. Job responses include `form_warnings` for knockouts that look like age
-proxies; warnings never block saving.
+proxies (graduation year, maximum experience) and for questions about current or past
+salary; warnings never block saving.
+
+Number, radio and dropdown fields may also carry a `condition` (`preset`, `importance` of
+`must` / `preferred` / `info`, a candidate-facing `summary`, and a `salary` range for
+expected salary). A must condition needs a `knockout`, a preferred one needs `scoring`, an
+info one needs neither. A form allows up to 20 questions and, separately, 10 conditions.
+The public job returns `before_you_apply` (the must summaries) and hides `condition`. Job
+detail includes `condition_knockouts`: per must condition, how many applicants it ever
+`stopped` and how many were `moved_forward` after. The CSV adds a `stopped by condition`
+column and marks condition columns with their importance.
+
+Create and edit reject questions, conditions or requirements text that screen on personal
+characteristics (gender, age, marital status, religion, ethnicity/caste/race, nationality or
+citizenship, disability, photos) with 422 and
+`guardrail_errors: [{ target, category, message, suggestion }]`, where `target` is a field id
+or `requirements`.
 
 With a registered company account, recruiter routes require
 `Authorization: Bearer {{token}}` using the access JWT from `/api/v1/auth/register` or

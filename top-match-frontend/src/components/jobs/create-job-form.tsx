@@ -15,10 +15,15 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/auth-context";
 import { useCreateJob } from "@/hooks/use-jobs";
-import { getApiErrorMessage } from "@/lib/api-error";
+import {
+  REQUIREMENTS_TARGET,
+  getApiErrorMessage,
+  getApiGuardrailErrors,
+  guardrailMessage,
+} from "@/lib/api-error";
 import { validateFormFields } from "@/lib/form-validation";
 import { richTextIsEmpty } from "@/lib/rich-text";
-import type { FormField } from "@/types/forms";
+import type { FormField, GuardrailError } from "@/types/forms";
 
 const TITLE_MAX = 200;
 
@@ -34,6 +39,7 @@ export function CreateJobForm() {
   const [descriptionError, setDescriptionError] = useState("");
   const [requirementsError, setRequirementsError] = useState("");
   const [formFieldsError, setFormFieldsError] = useState("");
+  const [blockedFields, setBlockedFields] = useState<GuardrailError[]>([]);
   const [formError, setFormError] = useState("");
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -88,6 +94,11 @@ export function CreateJobForm() {
       });
       router.replace(`/jobs/${job.id}`);
     } catch (error) {
+      const guardrail = getApiGuardrailErrors(error);
+      setRequirementsError(
+        guardrailMessage(guardrail.filter((item) => item.target === REQUIREMENTS_TARGET)),
+      );
+      setBlockedFields(guardrail.filter((item) => item.target !== REQUIREMENTS_TARGET));
       setFormError(getApiErrorMessage(error));
     }
   }
@@ -167,10 +178,12 @@ export function CreateJobForm() {
               />
             </div>
             <FormBuilderWorkspace
+              blocked={blockedFields}
               error={formFieldsError}
               fields={formFields}
               onChange={(next) => {
                 setFormFieldsError("");
+                setBlockedFields([]);
                 setFormFields(next);
               }}
             />

@@ -1,5 +1,7 @@
+import { isConditionField, validateCondition } from "@/lib/condition-presets";
 import {
   FILE_ACCEPT_MIME,
+  MAX_CONDITIONS,
   MAX_FILE_FIELDS,
   MAX_FORM_FIELDS,
   TEXT_MAX_LENGTH_CAP,
@@ -43,8 +45,12 @@ export function acceptForField(field: Extract<FormField, { type: "file" }>): str
 }
 
 export function validateFormFields(fields: FormField[]): string {
-  if (fields.length > MAX_FORM_FIELDS) {
-    return `A form can have at most ${MAX_FORM_FIELDS} custom fields`;
+  const conditionCount = fields.filter(isConditionField).length;
+  if (fields.length - conditionCount > MAX_FORM_FIELDS) {
+    return `A form can have at most ${MAX_FORM_FIELDS} custom questions`;
+  }
+  if (conditionCount > MAX_CONDITIONS) {
+    return `A form can have at most ${MAX_CONDITIONS} job conditions`;
   }
   const fileCount = fields.filter((field) => field.type === "file").length;
   if (fileCount > MAX_FILE_FIELDS) {
@@ -82,6 +88,10 @@ export function validateFormFields(fields: FormField[]): string {
     const knockoutMessage = validateKnockout(field);
     if (knockoutMessage) {
       return knockoutMessage;
+    }
+    const conditionMessage = isConditionField(field) ? validateCondition(field) : "";
+    if (conditionMessage) {
+      return conditionMessage;
     }
   }
   return "";

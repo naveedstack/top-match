@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useState, type ReactNode } from "react";
 
+import { ConditionVerdict } from "@/components/applications/condition-verdict";
 import { ResumePreview } from "@/components/applications/resume-preview";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { Icon } from "@/components/icon";
@@ -307,7 +308,15 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
               <dl className="flex flex-col gap-space-md">
                 {application.answers.map((answer) => (
                   <div className="min-w-0" key={answer.field_id}>
-                    <dt className="break-words text-label-md font-medium text-on-surface">{answer.label}</dt>
+                    <dt className="break-words text-label-md font-medium text-on-surface">
+                      {answer.label}
+                      {answer.condition && answer.condition_verdict ? (
+                        <ConditionVerdict
+                          condition={answer.condition}
+                          verdict={answer.condition_verdict}
+                        />
+                      ) : null}
+                    </dt>
                     <dd className="mt-1 min-w-0 break-words whitespace-pre-wrap text-body-md text-on-surface-variant">
                       {formatAnswerValue(answer, () => void onDownloadAnswer(answer))}
                     </dd>

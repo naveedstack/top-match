@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 
+import { BeforeYouApply } from "@/components/apply/before-you-apply";
 import { FormFieldInput } from "@/components/forms/form-field-input";
 import { Icon } from "@/components/icon";
 import { RichTextContent } from "@/components/ui/rich-text-content";
 import { cn } from "@/lib/cn";
+import { beforeYouApply } from "@/lib/condition-presets";
 import type { FormField } from "@/types/forms";
 
 type FormCandidatePreviewProps = {
@@ -127,6 +129,7 @@ export function FormCandidatePreview({
           </div>
         ) : (
           <div className="flex min-h-72 flex-col gap-4">
+        <BeforeYouApply items={beforeYouApply(fields)} />
         <div className="space-y-1 rounded-lg border border-secondary-fixed bg-surface-container-low p-2.5">
           <div className="flex items-center gap-1.5 text-label-sm font-semibold text-secondary">
             <Icon className="text-[15px]" name="verified_user" />

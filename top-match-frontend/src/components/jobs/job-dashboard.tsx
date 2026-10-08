@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { Icon } from "@/components/icon";
+import { ConditionKnockouts } from "@/components/jobs/condition-knockouts";
 import { JobCloseDialog } from "@/components/jobs/job-close-dialog";
 import { JobEditPanel } from "@/components/jobs/job-edit-panel";
 import { LeaderboardTable } from "@/components/jobs/leaderboard-table";
@@ -276,7 +277,7 @@ export function JobDashboard({ jobId }: { jobId: string }) {
       {job.screening_disclaimer ? <Banner>{job.screening_disclaimer}</Banner> : null}
       {job.form_warnings.length > 0 ? (
         <Banner>
-          <span className="font-semibold">Check your knockout questions. </span>
+          <span className="font-semibold">Check your application form. </span>
           {job.form_warnings.map((warning) => warning.message).join(" ")}
         </Banner>
       ) : null}
@@ -520,6 +521,8 @@ export function JobDashboard({ jobId }: { jobId: string }) {
           total={total}
         />
       )}
+
+      <ConditionKnockouts items={job.condition_knockouts} />
 
       <UnscoredLists counts={counts} jobId={jobId} onError={setActionError} />
 

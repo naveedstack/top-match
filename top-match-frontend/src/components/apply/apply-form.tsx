@@ -11,6 +11,7 @@ import {
   type FormEvent,
 } from "react";
 
+import { BeforeYouApply } from "@/components/apply/before-you-apply";
 import { AuthErrorBanner } from "@/components/auth/auth-error-banner";
 import { FormFieldInput } from "@/components/forms/form-field-input";
 import { Icon } from "@/components/icon";
@@ -289,6 +290,9 @@ export function ApplyForm({ company, slug }: { company: string; slug: string }) 
         id="job-application-panel"
         role="tabpanel"
       >
+        <div className="mb-space-md">
+          <BeforeYouApply items={job.before_you_apply} />
+        </div>
         <div className="flex items-start gap-space-md rounded-lg border border-outline-variant bg-surface-container-lowest p-space-md shadow-sm">
           <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-container">
             <Icon className="text-[20px] text-secondary" name="verified_user" />

@@ -24,6 +24,7 @@ from app.core.exceptions import (
     InvalidUploadError,
     JobClosedError,
     JobNotFoundError,
+    ProtectedCharacteristicError,
     ResumeAlreadyUsedError,
     ResumeNotFoundError,
     ResumeTooLargeError,
@@ -189,6 +190,18 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=422,
             content={"detail": "Invalid form answers", "field_errors": exc.field_errors},
+        )
+
+    @app.exception_handler(ProtectedCharacteristicError)
+    async def protected_characteristic_handler(
+        request: Request, exc: ProtectedCharacteristicError
+    ) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "detail": "Jobs cannot screen on personal characteristics",
+                "guardrail_errors": exc.violations,
+            },
         )
 
     @app.exception_handler(AttachmentNotFoundError)
