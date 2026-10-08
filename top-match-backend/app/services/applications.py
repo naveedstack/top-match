@@ -23,22 +23,35 @@ from app.core.notices import SCREENING_DISCLAIMER
 from app.core.security import create_resume_token, decode_resume_token
 from app.integrations import pdf as pdf_lib
 from app.integrations import storage
-from app.models import Application, ApplicationAttachment, ApplicationStatus, JobStatus, Recruiter
+from app.models import (
+    Application,
+    ApplicationAttachment,
+    ApplicationStatus,
+    JobStatus,
+    PhaseOutcome,
+    PhaseResult,
+    ReasonCode,
+    Recruiter,
+    ScreeningPhase,
+)
 from app.repositories import applications as applications_repo
+from app.repositories import attachments as attachments_repo
 from app.repositories import jobs as jobs_repo
+from app.repositories import phase_results as phase_results_repo
 from app.schemas.applications import (
     ApplicationAnswerItem,
     ApplicationDetailResponse,
     LeaderboardItem,
     LeaderboardResponse,
+    PhaseResultItem,
 )
 from app.schemas.evaluation import Citation
 from app.schemas.forms import parse_form_fields
 from app.schemas.jobs import ApplicationCounts
 from app.services import attachments as attachments_service
 from app.services import jobs as jobs_service
+from app.services import pipeline, screening, screening_queue
 from app.services.forms import validate_answers
-from app.services.pipeline import rescore_application as run_rescore
 
 
 def resume_storage_key(file_id: UUID) -> str:
@@ -144,7 +157,8 @@ async def apply_to_job(
     try:
         await applications_repo.add(session, application)
         for prepared in attachments:
-            session.add(
+            await attachments_repo.add(
+                session,
                 ApplicationAttachment(
                     application_id=application.id,
                     field_id=prepared.field_id,
@@ -152,13 +166,15 @@ async def apply_to_job(
                     filename=prepared.filename,
                     content_type=prepared.content_type,
                     byte_size=prepared.byte_size,
-                )
+                ),
             )
         await session.commit()
         await session.refresh(application)
     except IntegrityError:
         await session.rollback()
         raise DuplicateApplicationError from None
+    # Screening never blocks or fails the submission (Rule 1).
+    screening_queue.enqueue_screening(application.id)
     return application
 
 
@@ -167,15 +183,18 @@ async def get_leaderboard(
     job_id: UUID,
     recruiter_id: UUID,
     *,
-    status: ApplicationStatus | None,
+    statuses: list[ApplicationStatus] | None,
+    stage: ScreeningPhase | None = None,
     limit: int,
     offset: int,
 ) -> LeaderboardResponse:
     job = await jobs_service.get_owned_job(session, job_id, recruiter_id)
     rows = await applications_repo.list_for_leaderboard(
-        session, job.id, status=status, limit=limit, offset=offset
+        session, job.id, statuses=statuses, stage=stage, limit=limit, offset=offset
     )
-    total = await applications_repo.count_for_leaderboard(session, job.id, status=status)
+    total = await applications_repo.count_for_leaderboard(
+        session, job.id, statuses=statuses, stage=stage
+    )
     counts = await jobs_repo.count_applications_by_status(session, job.id)
     return LeaderboardResponse(
         items=[
@@ -186,6 +205,11 @@ async def get_leaderboard(
                 score=application.score,
                 needs_review=needs_review,
                 created_at=application.created_at,
+                current_phase=application.current_phase,
+                stopped_phase=application.stopped_phase,
+                stop_code=application.stop_code,
+                stop_reason=application.stop_reason,
+                reviewed_at=application.reviewed_at,
             )
             for application, needs_review in rows
         ],
@@ -193,6 +217,15 @@ async def get_leaderboard(
         total=total,
         screening_disclaimer=SCREENING_DISCLAIMER,
     )
+
+
+def answers_score(application: Application) -> int | None:
+    """Latest code-computed answers score. Kept separate from the resume score."""
+    for result in reversed(application.phase_results):
+        if result.phase == ScreeningPhase.ANSWERS and result.outcome == PhaseOutcome.PASS:
+            value = result.evidence.get("answers_score")
+            return value if isinstance(value, int) else None
+    return None
 
 
 def to_detail(application: Application) -> ApplicationDetailResponse:
@@ -257,6 +290,22 @@ def to_detail(application: Application) -> ApplicationDetailResponse:
         needs_review=None if evaluation is None else evaluation.needs_review,
         resume_url=resume_url_for(application.id) if application.resume_storage_key else None,
         answers=answers,
+        current_phase=application.current_phase,
+        stopped_phase=application.stopped_phase,
+        stop_code=application.stop_code,
+        stop_reason=application.stop_reason,
+        reviewed_at=application.reviewed_at,
+        answers_score=answers_score(application),
+        phase_results=[
+            PhaseResultItem(
+                phase=result.phase,
+                outcome=result.outcome,
+                reasons=list(result.reasons),
+                overridden=result.overridden_by_recruiter_id is not None,
+                created_at=result.created_at,
+            )
+            for result in application.phase_results
+        ],
     )
 
 
@@ -271,8 +320,94 @@ async def get_owned_detail(
     return to_detail(application)
 
 
+async def _owned(session: AsyncSession, application_id: UUID, recruiter_id: UUID) -> Application:
+    application = await applications_repo.get_by_id_and_recruiter(
+        session, application_id, recruiter_id
+    )
+    if application is None:
+        raise ApplicationNotFoundError
+    return application
+
+
+def _override(
+    application: Application,
+    recruiter: Recruiter,
+    phase: ScreeningPhase,
+    outcome: PhaseOutcome,
+    code: ReasonCode,
+    message: str,
+    evidence: dict[str, Any],
+) -> PhaseResult:
+    return PhaseResult(
+        application_id=application.id,
+        phase=phase,
+        outcome=outcome,
+        reasons=[{"code": code.value, "message": message}],
+        evidence=evidence,
+        config_version=screening.config_version(application.job.form_fields),
+        overridden_by_recruiter_id=recruiter.id,
+    )
+
+
 async def rescore(session: AsyncSession, application_id: UUID, recruiter: Recruiter) -> Application:
-    return await run_rescore(session, application_id, recruiter.id)
+    """Retry a failed or refused application from the phase that stopped it."""
+    application = await _owned(session, application_id, recruiter.id)
+    if application.status not in (ApplicationStatus.FAILED, ApplicationStatus.REFUSED):
+        raise ApplicationNotFoundError
+    stopped = application.stopped_phase or ScreeningPhase.RESUME
+    pipeline.restart_after(application, pipeline.phase_before(stopped))
+    await session.commit()
+    screening_queue.enqueue_screening(application.id, reclaim_processing=True)
+    return application
+
+
+async def move_forward(
+    session: AsyncSession, application_id: UUID, recruiter: Recruiter
+) -> Application:
+    """Override a knockout failure: record it and continue at the next phase."""
+    application = await _owned(session, application_id, recruiter.id)
+    if application.status != ApplicationStatus.KNOCKED_OUT:
+        raise ApplicationNotFoundError
+    await phase_results_repo.add(
+        session,
+        _override(
+            application,
+            recruiter,
+            ScreeningPhase.KNOCKOUT,
+            PhaseOutcome.PASS,
+            ReasonCode.RECRUITER_OVERRIDE,
+            "Moved forward by recruiter",
+            {"overridden_reason": application.stop_reason},
+        ),
+    )
+    pipeline.restart_after(application, ScreeningPhase.KNOCKOUT)
+    await session.commit()
+    screening_queue.enqueue_screening(application.id, reclaim_processing=True)
+    return application
+
+
+async def mark_reviewed(
+    session: AsyncSession, application_id: UUID, recruiter: Recruiter
+) -> Application:
+    """Record a manual review of a refused or failed application. The status is unchanged."""
+    application = await _owned(session, application_id, recruiter.id)
+    if application.status not in (ApplicationStatus.FAILED, ApplicationStatus.REFUSED):
+        raise ApplicationNotFoundError
+    await phase_results_repo.add(
+        session,
+        _override(
+            application,
+            recruiter,
+            application.stopped_phase or ScreeningPhase.RESUME,
+            PhaseOutcome.REVIEW,
+            ReasonCode.RECRUITER_REVIEW,
+            "Reviewed manually by recruiter",
+            {"stop_code": application.stop_code},
+        ),
+    )
+    application.reviewed_at = datetime.now(UTC)
+    await session.commit()
+    return application
 
 
 async def get_resume_pdf(session: AsyncSession, token: str) -> bytes:

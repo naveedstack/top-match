@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { Icon } from "@/components/icon";
 import { cn } from "@/lib/cn";
 import {
@@ -7,10 +9,15 @@ import {
   FORM_FIELD_TYPES,
   MAX_FILE_FIELDS,
   MAX_FORM_FIELDS,
+  MAX_WEIGHT,
   newFormField,
+  newYesNoKnockout,
+  type ChoiceFormField,
   type FileAccept,
   type FormField,
   type FormFieldType,
+  type FormWarning,
+  type NumberFormField,
 } from "@/types/forms";
 
 const FILE_ACCEPTS: FileAccept[] = ["pdf", "docx", "png", "jpeg"];
@@ -56,13 +63,36 @@ type FormBuilderWorkspaceProps = {
   onChange: (fields: FormField[]) => void;
   disabled?: boolean;
   error?: string;
+  // Age-proxy warnings from the last save. They never block saving.
+  warnings?: FormWarning[];
 };
+
+/** Keep knockout and scoring config in step with the field's options. */
+function withOptions(field: ChoiceFormField, options: string[]): ChoiceFormField {
+  const next: ChoiceFormField = { ...field, options };
+  if (field.knockout) {
+    next.knockout = {
+      ...field.knockout,
+      allowed_values: field.knockout.allowed_values.filter((value) => options.includes(value)),
+    };
+  }
+  if (field.scoring) {
+    next.scoring = {
+      ...field.scoring,
+      option_scores: Object.fromEntries(
+        Object.entries(field.scoring.option_scores).filter(([option]) => options.includes(option)),
+      ),
+    };
+  }
+  return next;
+}
 
 export function FormBuilderWorkspace({
   fields,
   onChange,
   disabled = false,
   error,
+  warnings = [],
 }: FormBuilderWorkspaceProps) {
   const fileCount = fields.filter((field) => field.type === "file").length;
   const atFieldCap = fields.length >= MAX_FORM_FIELDS;
@@ -79,6 +109,13 @@ export function FormBuilderWorkspace({
       return;
     }
     onChange([...fields, newFormField(type)]);
+  }
+
+  function addYesNoKnockout() {
+    if (disabled || atFieldCap) {
+      return;
+    }
+    onChange([...fields, newYesNoKnockout()]);
   }
 
   function moveField(index: number, direction: -1 | 1) {
@@ -106,6 +143,7 @@ export function FormBuilderWorkspace({
             Up to {MAX_FORM_FIELDS} custom fields (max {MAX_FILE_FIELDS} file uploads). Custom answers
             are stored for recruiters and are{" "}
             <strong className="font-semibold text-on-surface">NOT</strong> sent to AI scoring.
+            Knockouts and answer weights are checked in code before the resume is scored.
           </p>
         </div>
       </div>
@@ -190,6 +228,7 @@ export function FormBuilderWorkspace({
               onDown={() => moveField(index, 1)}
               onUp={() => moveField(index, -1)}
               total={fields.length}
+              warnings={warnings.filter((warning) => warning.field_id === field.id)}
             />
           ))}
         </div>
@@ -216,6 +255,14 @@ export function FormBuilderWorkspace({
                 </button>
               );
             })}
+            <button
+              className="inline-flex items-center gap-1.5 rounded-lg border border-outline-variant bg-surface-container-lowest px-3 py-1.5 text-label-md text-on-surface transition-all hover:border-secondary hover:bg-surface-container-low disabled:opacity-50"
+              disabled={atFieldCap}
+              onClick={addYesNoKnockout}
+              type="button"
+            >
+              <Icon className="text-[17px] text-secondary" name="filter_alt" />+ Yes/no knockout
+            </button>
           </div>
         </section>
       ) : null}
@@ -233,6 +280,7 @@ function WorkspaceFieldCard({
   onDelete,
   onUp,
   onDown,
+  warnings,
 }: {
   field: FormField;
   index: number;
@@ -243,7 +291,11 @@ function WorkspaceFieldCard({
   onDelete: () => void;
   onUp: () => void;
   onDown: () => void;
+  warnings: FormWarning[];
 }) {
+  const isKnockout =
+    (field.type === "number" || field.type === "dropdown" || field.type === "radio") &&
+    Boolean(field.knockout);
   return (
     <article className="min-w-0 overflow-hidden rounded-xl border border-outline-variant bg-surface-container-lowest p-4 shadow-sm transition-all hover:border-secondary">
       <div className="flex items-center justify-between border-b border-surface-container-high pb-3">
@@ -251,6 +303,11 @@ function WorkspaceFieldCard({
           <span className="rounded border border-secondary-fixed bg-surface-container-low px-2 py-0.5 text-label-sm font-semibold tracking-wide text-secondary uppercase">
             {TYPE_BADGE[field.type]}
           </span>
+          {isKnockout ? (
+            <span className="rounded border border-status-knocked-out/30 bg-status-knocked-out-container px-2 py-0.5 text-label-sm font-semibold text-status-knocked-out uppercase">
+              Knockout
+            </span>
+          ) : null}
           <span className="text-label-sm text-on-surface-variant">
             Position {index + 1}
             {field.type === "file" ? ` · ${fileIndex} of ${MAX_FILE_FIELDS} allowed uploads` : ""}
@@ -389,7 +446,7 @@ function WorkspaceFieldCard({
           </div>
           <Switch
             checked={field.required}
-            disabled={disabled}
+            disabled={disabled || isKnockout}
             label="Required field"
             onChange={(required) => onChange({ ...field, required })}
           />
@@ -411,7 +468,7 @@ function WorkspaceFieldCard({
                     onChange={(event) => {
                       const next = [...field.options];
                       next[optionIndex] = event.target.value;
-                      onChange({ ...field, options: next });
+                      onChange(withOptions(field, next));
                     }}
                     type="text"
                     value={option}
@@ -421,10 +478,12 @@ function WorkspaceFieldCard({
                     className="p-1 text-on-surface-variant hover:text-error disabled:opacity-40"
                     disabled={disabled || field.options.length <= 2}
                     onClick={() =>
-                      onChange({
-                        ...field,
-                        options: field.options.filter((_, itemIndex) => itemIndex !== optionIndex),
-                      })
+                      onChange(
+                        withOptions(
+                          field,
+                          field.options.filter((_, itemIndex) => itemIndex !== optionIndex),
+                        ),
+                      )
                     }
                     type="button"
                   >
@@ -437,7 +496,7 @@ function WorkspaceFieldCard({
               className="mt-2 inline-flex items-center gap-1.5 rounded border border-dashed border-outline-variant px-2.5 py-1 text-label-sm text-secondary hover:border-secondary hover:bg-surface-container-low disabled:opacity-40"
               disabled={disabled || field.options.length >= 50}
               onClick={() =>
-                onChange({ ...field, options: [...field.options, `Option ${field.options.length + 1}`] })
+                onChange(withOptions(field, [...field.options, `Option ${field.options.length + 1}`]))
               }
               type="button"
             >
@@ -453,13 +512,39 @@ function WorkspaceFieldCard({
             </span>
             <Switch
               checked={field.required}
-              disabled={disabled}
+              disabled={disabled || isKnockout}
               label="Required field"
               onChange={(required) => onChange({ ...field, required })}
             />
           </div>
         </>
       ) : null}
+
+      {field.type === "number" ? (
+        <>
+          <NumberKnockoutEditor disabled={disabled} field={field} onChange={onChange} />
+          <NumberScoringEditor disabled={disabled} field={field} onChange={onChange} />
+        </>
+      ) : null}
+
+      {field.type === "dropdown" || field.type === "radio" ? (
+        <ChoiceKnockoutEditor disabled={disabled} field={field} onChange={onChange} />
+      ) : null}
+
+      {field.type === "dropdown" || field.type === "radio" || field.type === "checkboxes" ? (
+        <ChoiceScoringEditor disabled={disabled} field={field} onChange={onChange} />
+      ) : null}
+
+      {warnings.map((warning) => (
+        <p
+          className="mt-3 flex items-start gap-1.5 rounded-lg border border-status-knocked-out/30 bg-status-knocked-out-container p-2.5 text-body-sm text-status-knocked-out"
+          key={warning.message}
+          role="status"
+        >
+          <Icon className="mt-0.5 shrink-0 text-[16px]" name="warning" />
+          {warning.message}
+        </p>
+      ))}
 
       {field.type === "file" ? (
         <>
@@ -511,6 +596,336 @@ function WorkspaceFieldCard({
         </>
       ) : null}
     </article>
+  );
+}
+
+const smallInputClass =
+  "w-16 rounded border border-outline-variant px-1.5 py-0.5 text-center font-mono text-xs disabled:opacity-60";
+
+function numberOrNull(raw: string): number | null {
+  return raw === "" ? null : Number(raw);
+}
+
+function ConfigSection({
+  title,
+  enabled,
+  disabled,
+  onToggle,
+  hint,
+  children,
+}: {
+  title: string;
+  enabled: boolean;
+  disabled: boolean;
+  onToggle: (enabled: boolean) => void;
+  hint: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="mt-3.5 border-t border-surface-container pt-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Switch checked={enabled} disabled={disabled} label={title} onChange={onToggle} />
+        <span className="text-body-sm text-on-surface-variant">{hint}</span>
+      </div>
+      {enabled ? <div className="mt-2.5 flex flex-col gap-2.5">{children}</div> : null}
+    </div>
+  );
+}
+
+function ReasonInput({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string;
+  disabled: boolean;
+  onChange: (reason: string) => void;
+}) {
+  return (
+    <label className="block min-w-0">
+      <span className="mb-1 block text-label-sm font-semibold text-on-surface">
+        Reason shown to you when someone fails
+      </span>
+      <input
+        className={inputClass}
+        disabled={disabled}
+        maxLength={300}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="e.g. Not authorized to work in Pakistan"
+        type="text"
+        value={value}
+      />
+    </label>
+  );
+}
+
+function ChoiceKnockoutEditor({
+  field,
+  disabled,
+  onChange,
+}: {
+  field: ChoiceFormField;
+  disabled: boolean;
+  onChange: (field: FormField) => void;
+}) {
+  const knockout = field.knockout;
+  return (
+    <ConfigSection
+      disabled={disabled}
+      enabled={Boolean(knockout)}
+      hint="Checked in code. Failing applicants skip resume scoring."
+      onToggle={(enabled) =>
+        onChange(
+          enabled
+            ? { ...field, required: true, knockout: { reason: "", allowed_values: [field.options[0]] } }
+            : { ...field, knockout: null },
+        )
+      }
+      title="Knockout question"
+    >
+      {knockout ? (
+        <>
+          <div>
+            <p className="mb-1 text-label-sm font-semibold text-on-surface">Answers that pass</p>
+            <div className="flex flex-wrap gap-2">
+              {field.options.map((option) => {
+                const checked = knockout.allowed_values.includes(option);
+                return (
+                  <label
+                    className="inline-flex cursor-pointer items-center gap-1.5 text-label-sm text-on-surface"
+                    key={option}
+                  >
+                    <input
+                      checked={checked}
+                      className="size-3.5 rounded border-outline-variant"
+                      disabled={disabled}
+                      onChange={() =>
+                        onChange({
+                          ...field,
+                          knockout: {
+                            ...knockout,
+                            allowed_values: checked
+                              ? knockout.allowed_values.filter((value) => value !== option)
+                              : [...knockout.allowed_values, option],
+                          },
+                        })
+                      }
+                      type="checkbox"
+                    />
+                    {option}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <ReasonInput
+            disabled={disabled}
+            onChange={(reason) => onChange({ ...field, knockout: { ...knockout, reason } })}
+            value={knockout.reason}
+          />
+        </>
+      ) : null}
+    </ConfigSection>
+  );
+}
+
+function NumberKnockoutEditor({
+  field,
+  disabled,
+  onChange,
+}: {
+  field: NumberFormField;
+  disabled: boolean;
+  onChange: (field: FormField) => void;
+}) {
+  const knockout = field.knockout;
+  return (
+    <ConfigSection
+      disabled={disabled}
+      enabled={Boolean(knockout)}
+      hint="Applicants below the minimum can still apply; they are knocked out."
+      onToggle={(enabled) =>
+        onChange(
+          enabled
+            ? { ...field, required: true, knockout: { reason: "", min: field.min ?? 0 } }
+            : { ...field, knockout: null },
+        )
+      }
+      title="Knockout question"
+    >
+      {knockout ? (
+        <>
+          <label className="flex items-center gap-1.5 text-label-sm text-on-surface">
+            Minimum to pass:
+            <input
+              className={smallInputClass}
+              disabled={disabled}
+              onChange={(event) =>
+                onChange({
+                  ...field,
+                  knockout: { ...knockout, min: numberOrNull(event.target.value) ?? 0 },
+                })
+              }
+              type="number"
+              value={knockout.min}
+            />
+          </label>
+          <ReasonInput
+            disabled={disabled}
+            onChange={(reason) => onChange({ ...field, knockout: { ...knockout, reason } })}
+            value={knockout.reason}
+          />
+        </>
+      ) : null}
+    </ConfigSection>
+  );
+}
+
+function WeightInput({
+  weight,
+  disabled,
+  onChange,
+}: {
+  weight: number;
+  disabled: boolean;
+  onChange: (weight: number) => void;
+}) {
+  return (
+    <label className="flex items-center gap-1.5 text-label-sm text-on-surface">
+      Weight (0.5–{MAX_WEIGHT}):
+      <input
+        className={smallInputClass}
+        disabled={disabled}
+        max={MAX_WEIGHT}
+        min={0.5}
+        onChange={(event) => onChange(Number(event.target.value) || 1)}
+        step={0.5}
+        type="number"
+        value={weight}
+      />
+    </label>
+  );
+}
+
+function ChoiceScoringEditor({
+  field,
+  disabled,
+  onChange,
+}: {
+  field: ChoiceFormField;
+  disabled: boolean;
+  onChange: (field: FormField) => void;
+}) {
+  const scoring = field.scoring;
+  return (
+    <ConfigSection
+      disabled={disabled}
+      enabled={Boolean(scoring)}
+      hint="Adds to the answers score. Never sent to the model."
+      onToggle={(enabled) =>
+        onChange(
+          enabled
+            ? { ...field, scoring: { weight: 1, option_scores: {} } }
+            : { ...field, scoring: null },
+        )
+      }
+      title="Score this answer"
+    >
+      {scoring ? (
+        <>
+          <WeightInput
+            disabled={disabled}
+            onChange={(weight) => onChange({ ...field, scoring: { ...scoring, weight } })}
+            weight={scoring.weight}
+          />
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
+            {field.options.map((option) => (
+              <label
+                className="flex items-center justify-between gap-2 text-label-sm text-on-surface"
+                key={option}
+              >
+                <span className="truncate">{option}</span>
+                <input
+                  className={smallInputClass}
+                  disabled={disabled}
+                  max={1}
+                  min={0}
+                  onChange={(event) => {
+                    const value = numberOrNull(event.target.value);
+                    const optionScores = { ...scoring.option_scores };
+                    if (value === null) {
+                      delete optionScores[option];
+                    } else {
+                      optionScores[option] = Math.min(1, Math.max(0, value));
+                    }
+                    onChange({ ...field, scoring: { ...scoring, option_scores: optionScores } });
+                  }}
+                  placeholder="0"
+                  step={0.25}
+                  type="number"
+                  value={scoring.option_scores[option] ?? ""}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-body-sm text-on-surface-variant">
+            Points per option, from 0 to 1.
+            {field.type === "checkboxes" ? " Selected options add up, capped at 1." : null}
+          </p>
+        </>
+      ) : null}
+    </ConfigSection>
+  );
+}
+
+function NumberScoringEditor({
+  field,
+  disabled,
+  onChange,
+}: {
+  field: NumberFormField;
+  disabled: boolean;
+  onChange: (field: FormField) => void;
+}) {
+  const scoring = field.scoring;
+  return (
+    <ConfigSection
+      disabled={disabled}
+      enabled={Boolean(scoring)}
+      hint="Adds to the answers score. Never sent to the model."
+      onToggle={(enabled) =>
+        onChange(
+          enabled ? { ...field, scoring: { weight: 1, target: 1 } } : { ...field, scoring: null },
+        )
+      }
+      title="Score this answer"
+    >
+      {scoring ? (
+        <div className="flex flex-wrap items-center gap-4">
+          <WeightInput
+            disabled={disabled}
+            onChange={(weight) => onChange({ ...field, scoring: { ...scoring, weight } })}
+            weight={scoring.weight}
+          />
+          <label className="flex items-center gap-1.5 text-label-sm text-on-surface">
+            Full points at:
+            <input
+              className={smallInputClass}
+              disabled={disabled}
+              min={0}
+              onChange={(event) =>
+                onChange({
+                  ...field,
+                  scoring: { ...scoring, target: numberOrNull(event.target.value) ?? 0 },
+                })
+              }
+              type="number"
+              value={scoring.target}
+            />
+          </label>
+        </div>
+      ) : null}
+    </ConfigSection>
   );
 }
 

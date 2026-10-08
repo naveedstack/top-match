@@ -1,11 +1,9 @@
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Request, Response, status
+from fastapi import APIRouter, Request, Response, status
 
 from app.api.deps import CurrentRecruiter, DbSession
 from app.api.v1.handlers.applications import handler as application_handlers
-from app.core.config import settings
-from app.core.exceptions import AttachmentNotFoundError, ResumeNotFoundError
 from app.core.rate_limit import limiter
 from app.schemas.applications import (
     ApplicationAccepted,
@@ -16,8 +14,6 @@ from app.schemas.applications import (
     UploadUrlRequest,
     UploadUrlResponse,
 )
-from app.services import attachments as attachments_service
-from app.services.pipeline import process_application
 
 router = APIRouter(tags=["applications"])
 
@@ -37,8 +33,6 @@ async def create_upload_url(
 @router.put("/public/files/{file_id}/content", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
 async def store_local_put(request: Request, response: Response, file_id: UUID) -> None:
-    if settings.STORAGE_BACKEND != "local":
-        raise ResumeNotFoundError
     await application_handlers.store_local_put(file_id, request)
 
 
@@ -59,8 +53,6 @@ async def create_attachment_upload_url(
 @router.put("/public/attachments/{file_id}/content", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit("10/minute")
 async def store_attachment_local_put(request: Request, response: Response, file_id: UUID) -> None:
-    if settings.STORAGE_BACKEND != "local":
-        raise AttachmentNotFoundError
     await application_handlers.store_attachment_local_put(file_id, request)
 
 
@@ -76,17 +68,9 @@ async def complete_attachment_upload(
 @limiter.limit("30/minute", key_func=_job_slug_key)
 @limiter.limit("10/minute")
 async def apply_to_job(
-    request: Request,
-    response: Response,
-    slug: str,
-    db: DbSession,
-    body: ApplicationCreate,
-    background_tasks: BackgroundTasks,
+    request: Request, response: Response, slug: str, db: DbSession, body: ApplicationCreate
 ) -> ApplicationAccepted:
-    accepted = await application_handlers.apply_to_job(db, slug, body)
-    if settings.PIPELINE_ENABLED:
-        background_tasks.add_task(process_application, accepted.id)
-    return accepted
+    return await application_handlers.apply_to_job(db, slug, body)
 
 
 @router.get("/applications/{application_id}")
@@ -98,31 +82,30 @@ async def get_application(
 
 @router.post("/applications/{application_id}/rescore")
 async def rescore_application(
-    application_id: UUID,
-    db: DbSession,
-    recruiter: CurrentRecruiter,
-    background_tasks: BackgroundTasks,
+    application_id: UUID, db: DbSession, recruiter: CurrentRecruiter
 ) -> ApplicationAccepted:
-    accepted = await application_handlers.rescore_application(db, recruiter, application_id)
-    if settings.PIPELINE_ENABLED:
-        background_tasks.add_task(process_application, accepted.id, reclaim_processing=True)
-    return accepted
+    return await application_handlers.rescore_application(db, recruiter, application_id)
+
+
+@router.post("/applications/{application_id}/move-forward")
+async def move_forward(
+    application_id: UUID, db: DbSession, recruiter: CurrentRecruiter
+) -> ApplicationAccepted:
+    return await application_handlers.move_forward(db, recruiter, application_id)
+
+
+@router.post("/applications/{application_id}/mark-reviewed")
+async def mark_reviewed(
+    application_id: UUID, db: DbSession, recruiter: CurrentRecruiter
+) -> ApplicationAccepted:
+    return await application_handlers.mark_reviewed(db, recruiter, application_id)
 
 
 @router.get("/public/resumes/{token}")
 async def get_resume_pdf(token: str, db: DbSession) -> Response:
-    pdf_bytes = await application_handlers.get_resume_pdf(db, token)
-    return Response(content=pdf_bytes, media_type="application/pdf")
+    return await application_handlers.get_resume_pdf(db, token)
 
 
 @router.get("/public/attachments/{token}")
 async def get_attachment(token: str, db: DbSession) -> Response:
-    payload, content_type, filename = await application_handlers.get_attachment_file(db, token)
-    return Response(
-        content=payload,
-        media_type=content_type,
-        headers={
-            "Content-Disposition": attachments_service.content_disposition(filename),
-            "X-Content-Type-Options": "nosniff",
-        },
-    )
+    return await application_handlers.get_attachment_file(db, token)

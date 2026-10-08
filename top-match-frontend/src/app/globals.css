@@ -62,6 +62,8 @@
   --color-status-failed: #e11d48;
   --color-status-failed-container: #fff1f2;
   --color-status-failed-border: #fecdd3;
+  --color-status-knocked-out: #b45309;
+  --color-status-knocked-out-container: #fffbeb;
 
   --spacing-gutter: 1.5rem;
   --spacing-gutter-sm: 1rem;

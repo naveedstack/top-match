@@ -2,7 +2,14 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { applyToJob, getApplication, rescoreApplication, uploadAttachment, uploadResume } from "@/api/applications";
+import {
+  applyToJob,
+  getApplication,
+  runApplicationAction,
+  uploadAttachment,
+  uploadResume,
+  type ApplicationAction,
+} from "@/api/applications";
 import { isNotFoundError } from "@/lib/api-error";
 import { queryKeys } from "@/lib/query-keys";
 import type { ApplicationCreateRequest } from "@/types/applications";
@@ -58,9 +65,17 @@ export function useApply(slug: string) {
 }
 
 export function useRescoreApplication(jobId: string, applicationId: string) {
+  return useApplicationAction(jobId, applicationId, "rescore");
+}
+
+export function useApplicationAction(
+  jobId: string,
+  applicationId: string,
+  action: ApplicationAction,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => rescoreApplication(applicationId),
+    mutationFn: () => runApplicationAction(applicationId, action),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: queryKeys.applications.detail(applicationId),

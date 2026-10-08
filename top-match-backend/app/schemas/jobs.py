@@ -60,6 +60,7 @@ class ApplicationCounts(BaseModel):
     scored: int
     refused: int
     failed: int
+    knocked_out: int
 
     @classmethod
     def from_status_map(cls, counts: dict[ApplicationStatus, int]) -> ApplicationCounts:
@@ -69,7 +70,13 @@ class ApplicationCounts(BaseModel):
             scored=counts[ApplicationStatus.SCORED],
             refused=counts[ApplicationStatus.REFUSED],
             failed=counts[ApplicationStatus.FAILED],
+            knocked_out=counts[ApplicationStatus.KNOCKED_OUT],
         )
+
+
+class FormWarningItem(BaseModel):
+    field_id: UUID
+    message: str
 
 
 class JobResponse(BaseModel):
@@ -84,6 +91,7 @@ class JobResponse(BaseModel):
     status: JobStatus
     created_at: datetime
     closed_at: datetime | None
+    form_warnings: list[FormWarningItem] = Field(default_factory=list)
 
 
 class JobListItemResponse(JobResponse):

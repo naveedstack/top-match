@@ -38,6 +38,8 @@ export async function getLeaderboard(
 ): Promise<Leaderboard> {
   const { data } = await api.get<Leaderboard>(`/jobs/${jobId}/leaderboard`, {
     params: query,
+    // FastAPI reads repeated keys (status=a&status=b), not status[]=a.
+    paramsSerializer: { indexes: null },
   });
   return data;
 }

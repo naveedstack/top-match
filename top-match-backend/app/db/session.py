@@ -7,6 +7,8 @@ engine = create_async_engine(
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
+    # DB errors must not echo bound values (resume text, emails) into logs.
+    hide_parameters=True,
 )
 
 SessionLocal = async_sessionmaker(engine, expire_on_commit=False)

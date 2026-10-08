@@ -9,9 +9,10 @@ from app.core.exceptions import FormLockedError, JobNotFoundError
 from app.core.notices import AI_SCREENING_NOTICE, SCREENING_DISCLAIMER, privacy_notice
 from app.models import Job, JobStatus, Recruiter
 from app.repositories import jobs as jobs_repo
-from app.schemas.forms import dump_form_fields, parse_form_fields
+from app.schemas.forms import FormField, dump_form_fields, parse_form_fields
 from app.schemas.jobs import (
     ApplicationCounts,
+    FormWarningItem,
     JobCreate,
     JobDetailResponse,
     JobListItemResponse,
@@ -19,6 +20,7 @@ from app.schemas.jobs import (
     JobUpdate,
     PublicJobResponse,
 )
+from app.services.screening import age_proxy_warnings
 
 _SLUG_ATTEMPTS = 8
 
@@ -28,12 +30,17 @@ def public_apply_url(company_slug: str, slug: str) -> str:
 
 
 def to_job_response(job: Job, recruiter: Recruiter) -> JobResponse:
+    fields = parse_form_fields(job.form_fields)
     return JobResponse(
         id=job.id,
         title=job.title,
         description=job.description,
         requirements=job.requirements,
-        form_fields=parse_form_fields(job.form_fields),
+        form_fields=fields,
+        form_warnings=[
+            FormWarningItem(field_id=item.field_id, message=item.message)
+            for item in age_proxy_warnings(fields)
+        ],
         company_slug=recruiter.company_slug,
         public_slug=job.public_slug,
         public_url=public_apply_url(recruiter.company_slug, job.public_slug),
@@ -43,12 +50,21 @@ def to_job_response(job: Job, recruiter: Recruiter) -> JobResponse:
     )
 
 
+def public_form_fields(raw: object) -> list[FormField]:
+    """Candidates never see knockout rules or answer weights."""
+    hidden = ("knockout", "scoring")
+    return [
+        field.model_copy(update={key: None for key in hidden if hasattr(field, key)})
+        for field in parse_form_fields(raw)
+    ]
+
+
 def to_public_response(job: Job) -> PublicJobResponse:
     return PublicJobResponse(
         title=job.title,
         description=job.description,
         requirements=job.requirements,
-        form_fields=parse_form_fields(job.form_fields),
+        form_fields=public_form_fields(job.form_fields),
         company_slug=job.recruiter.company_slug,
         status=job.status,
         privacy_notice=privacy_notice(),

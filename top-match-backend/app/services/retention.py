@@ -37,7 +37,7 @@ async def purge_expired_applications(session: AsyncSession | None = None) -> dic
                 except OSError:
                     logger.exception("retention storage delete failed")
                     storage_missing += 1
-            await active.delete(application)
+            await applications_repo.delete(active, application)
             purged += 1
         if purged:
             await active.commit()

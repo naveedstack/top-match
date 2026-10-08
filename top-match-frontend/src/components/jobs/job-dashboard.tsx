@@ -9,6 +9,7 @@ import { Icon } from "@/components/icon";
 import { JobCloseDialog } from "@/components/jobs/job-close-dialog";
 import { JobEditPanel } from "@/components/jobs/job-edit-panel";
 import { LeaderboardTable } from "@/components/jobs/leaderboard-table";
+import { UnscoredLists } from "@/components/jobs/unscored-lists";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
@@ -16,16 +17,30 @@ import { useExportJob, useJob, useLeaderboard } from "@/hooks/use-jobs";
 import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
 import { cn } from "@/lib/cn";
 import { csvFilenameFromTitle, downloadTextFile } from "@/lib/download";
-import type { ApplicationStatus, LeaderboardQuery } from "@/types/applications";
-import type { ApplicationCounts } from "@/types/jobs";
+import {
+  PHASE_LABEL,
+  SCREENING_PHASES,
+  STATUS_LABEL,
+  type ApplicationStatus,
+  type LeaderboardQuery,
+  type ScreeningPhase,
+} from "@/types/applications";
+import { EMPTY_COUNTS, totalApplications } from "@/types/jobs";
 
 const PIPELINE_STATUSES: ApplicationStatus[] = [
   "received",
   "processing",
   "scored",
+  "knocked_out",
   "refused",
   "failed",
 ];
+
+// Default view. Knocked-out, refused and failed applicants have their own lists below.
+const ACTIVE_STATUSES: ApplicationStatus[] = ["received", "processing", "scored"];
+const ALL_STATUSES = "all";
+
+type StatusFilter = ApplicationStatus | typeof ALL_STATUSES | undefined;
 
 const COUNT_CARDS: Array<{
   status: ApplicationStatus;
@@ -34,6 +49,7 @@ const COUNT_CARDS: Array<{
   { status: "received", icon: "inbox" },
   { status: "processing", icon: "sync" },
   { status: "scored", icon: "verified" },
+  { status: "knocked_out", icon: "filter_alt_off" },
   { status: "refused", icon: "do_not_disturb_on" },
   { status: "failed", icon: "error_outline" },
 ];
@@ -43,14 +59,6 @@ const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
 const MIN_TOP_N = 1;
 const MAX_TOP_N = 500;
-const EMPTY_COUNTS: ApplicationCounts = {
-  received: 0,
-  processing: 0,
-  scored: 0,
-  refused: 0,
-  failed: 0,
-};
-
 function parseLimit(raw: string | null): number {
   const value = Number(raw);
   if (!Number.isInteger(value)) {
@@ -67,21 +75,21 @@ function parseOffset(raw: string | null): number {
   return value;
 }
 
-function parseStatus(raw: string | null): ApplicationStatus | undefined {
+function parseStatus(raw: string | null): StatusFilter {
+  if (raw === ALL_STATUSES) {
+    return ALL_STATUSES;
+  }
   if (raw && (PIPELINE_STATUSES as string[]).includes(raw)) {
     return raw as ApplicationStatus;
   }
   return undefined;
 }
 
-function sumCounts(counts: ApplicationCounts): number {
-  return (
-    counts.received + counts.processing + counts.scored + counts.refused + counts.failed
-  );
-}
-
-function statusLabel(status: ApplicationStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1);
+function parseStage(raw: string | null): ScreeningPhase | undefined {
+  if (raw && (SCREENING_PHASES as string[]).includes(raw)) {
+    return raw as ScreeningPhase;
+  }
+  return undefined;
 }
 
 export function JobDashboard({ jobId }: { jobId: string }) {
@@ -89,16 +97,22 @@ export function JobDashboard({ jobId }: { jobId: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const status = parseStatus(searchParams.get("status"));
+  const stage = parseStage(searchParams.get("stage"));
   const limit = parseLimit(searchParams.get("limit"));
   const offset = parseOffset(searchParams.get("offset"));
 
   const query = useMemo<LeaderboardQuery>(() => {
     const next: LeaderboardQuery = { limit, offset };
-    if (status) {
+    if (status === undefined) {
+      next.status = ACTIVE_STATUSES;
+    } else if (status !== ALL_STATUSES) {
       next.status = status;
     }
+    if (stage) {
+      next.stage = stage;
+    }
     return next;
-  }, [limit, offset, status]);
+  }, [limit, offset, status, stage]);
 
   const jobQuery = useJob(jobId);
   const leaderboardQuery = useLeaderboard(jobId, query);
@@ -118,13 +132,22 @@ export function JobDashboard({ jobId }: { jobId: string }) {
   const counts = leaderboard?.counts ?? job?.application_counts ?? EMPTY_COUNTS;
   const items = leaderboard?.items ?? [];
   const total = leaderboard?.total ?? 0;
-  const allCount = sumCounts(counts);
+  const allCount = totalApplications(counts);
+  const activeCount = counts.received + counts.processing + counts.scored;
   const selectedCount = selectedIds.size;
 
-  function replaceQuery(next: { status?: ApplicationStatus; limit: number; offset: number }) {
+  function replaceQuery(next: {
+    status?: StatusFilter;
+    stage?: ScreeningPhase;
+    limit: number;
+    offset: number;
+  }) {
     const params = new URLSearchParams();
     if (next.status) {
       params.set("status", next.status);
+    }
+    if (next.stage) {
+      params.set("stage", next.stage);
     }
     if (next.limit !== DEFAULT_LIMIT) {
       params.set("limit", String(next.limit));
@@ -155,17 +178,23 @@ export function JobDashboard({ jobId }: { jobId: string }) {
     setSelectedIds(new Set());
     replaceQuery({
       status: parseStatus(value),
+      stage,
       limit,
       offset: 0,
     });
   }
 
+  function onStageChange(value: string) {
+    setSelectedIds(new Set());
+    replaceQuery({ status, stage: parseStage(value), limit, offset: 0 });
+  }
+
   function onPrevious() {
-    replaceQuery({ status, limit, offset: Math.max(0, offset - limit) });
+    replaceQuery({ status, stage, limit, offset: Math.max(0, offset - limit) });
   }
 
   function onNext() {
-    replaceQuery({ status, limit, offset: offset + limit });
+    replaceQuery({ status, stage, limit, offset: offset + limit });
   }
 
   function onToggle(id: string) {
@@ -245,6 +274,12 @@ export function JobDashboard({ jobId }: { jobId: string }) {
   return (
     <div className="flex flex-col gap-space-lg">
       {job.screening_disclaimer ? <Banner>{job.screening_disclaimer}</Banner> : null}
+      {job.form_warnings.length > 0 ? (
+        <Banner>
+          <span className="font-semibold">Check your knockout questions. </span>
+          {job.form_warnings.map((warning) => warning.message).join(" ")}
+        </Banner>
+      ) : null}
 
       <div className="flex flex-col gap-space-md">
         <nav className="flex items-center gap-space-xs text-label-sm text-on-surface-variant">
@@ -296,7 +331,7 @@ export function JobDashboard({ jobId }: { jobId: string }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-space-sm sm:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-space-sm sm:grid-cols-3 lg:grid-cols-6">
         {COUNT_CARDS.map((card) => {
           const failed = card.status === "failed";
           const processing = card.status === "processing";
@@ -312,7 +347,7 @@ export function JobDashboard({ jobId }: { jobId: string }) {
                     failed ? "text-error" : processing ? "text-secondary" : "text-on-surface-variant",
                   )}
                 >
-                  {statusLabel(card.status)}
+                  {STATUS_LABEL[card.status]}
                 </span>
                 <Icon
                   className={cn(
@@ -348,12 +383,34 @@ export function JobDashboard({ jobId }: { jobId: string }) {
               className="rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-label-md text-on-surface focus:border-secondary focus:ring-0"
               id="status-filter"
               onChange={(event) => onFilterChange(event.target.value)}
-              value={status ?? "all"}
+              value={status ?? ""}
             >
-              <option value="all">All statuses ({allCount})</option>
+              <option value="">Active &amp; scored ({activeCount})</option>
+              <option value={ALL_STATUSES}>All statuses ({allCount})</option>
               {PIPELINE_STATUSES.map((value) => (
                 <option key={value} value={value}>
-                  {statusLabel(value)} ({counts[value]})
+                  {STATUS_LABEL[value]} ({counts[value]})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-space-xs">
+            <label
+              className="text-label-sm font-semibold text-on-surface-variant"
+              htmlFor="stage-filter"
+            >
+              Stage:
+            </label>
+            <select
+              className="rounded-lg border border-outline-variant bg-surface-container-lowest px-2.5 py-1.5 text-label-md text-on-surface focus:border-secondary focus:ring-0"
+              id="stage-filter"
+              onChange={(event) => onStageChange(event.target.value)}
+              value={stage ?? ""}
+            >
+              <option value="">All stages</option>
+              {SCREENING_PHASES.map((value) => (
+                <option key={value} value={value}>
+                  {PHASE_LABEL[value]}
                 </option>
               ))}
             </select>
@@ -447,7 +504,7 @@ export function JobDashboard({ jobId }: { jobId: string }) {
           </Button>
         </div>
       ) : showFilteredEmpty ? (
-        <p className="text-body-md text-on-surface-variant">No applications with this status.</p>
+        <p className="text-body-md text-on-surface-variant">No applications match these filters.</p>
       ) : (
         <LeaderboardTable
           items={items}
@@ -463,6 +520,8 @@ export function JobDashboard({ jobId }: { jobId: string }) {
           total={total}
         />
       )}
+
+      <UnscoredLists counts={counts} jobId={jobId} onError={setActionError} />
 
       {editOpen ? <JobEditPanel job={job} onClose={() => setEditOpen(false)} /> : null}
       {closeOpen ? <JobCloseDialog jobId={jobId} onClose={() => setCloseOpen(false)} /> : null}

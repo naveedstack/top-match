@@ -14,6 +14,8 @@ MIN_OPTIONS = 2
 MAX_OPTIONS = 50
 TEXT_MAX_LENGTH_DEFAULT = 500
 TEXT_MAX_LENGTH_CAP = 5000
+KNOCKOUT_REASON_MAX = 300
+MAX_WEIGHT = 10
 
 type FileAccept = Literal["pdf", "docx", "png", "jpeg"]
 
@@ -51,6 +53,56 @@ class FormFieldBase(BaseModel):
         return stripped or None
 
 
+class ConfigModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+
+class KnockoutBase(ConfigModel):
+    # Shown to the recruiter when an applicant fails this knockout.
+    reason: str = Field(min_length=1, max_length=KNOCKOUT_REASON_MAX)
+
+    @field_validator("reason")
+    @classmethod
+    def strip_reason(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("must not be blank")
+        return stripped
+
+
+class ChoiceKnockout(KnockoutBase):
+    """Fails unless the answer is one of allowed_values. Yes/no is a radio preset."""
+
+    allowed_values: list[str] = Field(min_length=1)
+
+
+class NumberKnockout(KnockoutBase):
+    """Fails when the answer is below min."""
+
+    min: float
+
+
+class ChoiceScoring(ConfigModel):
+    """Points per option (0-1), scaled by weight. Unlisted options score 0."""
+
+    weight: float = Field(gt=0, le=MAX_WEIGHT)
+    option_scores: dict[str, float]
+
+    @field_validator("option_scores")
+    @classmethod
+    def scores_in_range(cls, value: dict[str, float]) -> dict[str, float]:
+        if any(score < 0 or score > 1 for score in value.values()):
+            raise ValueError("option scores must be between 0 and 1")
+        return value
+
+
+class NumberScoring(ConfigModel):
+    """Full points at or above target, scaled linearly below it."""
+
+    weight: float = Field(gt=0, le=MAX_WEIGHT)
+    target: float = Field(gt=0)
+
+
 class TextFormField(FormFieldBase):
     type: Literal["text"] = "text"
     multiline: bool = False
@@ -62,11 +114,15 @@ class NumberFormField(FormFieldBase):
     min: float | None = None
     max: float | None = None
     integer_only: bool = False
+    knockout: NumberKnockout | None = None
+    scoring: NumberScoring | None = None
 
     @model_validator(mode="after")
     def min_lte_max(self) -> NumberFormField:
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("min must be less than or equal to max")
+        if self.knockout is not None and not self.required:
+            raise ValueError("knockout questions must be required")
         return self
 
 
@@ -90,17 +146,42 @@ class ChoiceFormField(FormFieldBase):
             cleaned.append(stripped)
         return cleaned
 
+    def _check_option_scores(self, scoring: ChoiceScoring | None) -> None:
+        if scoring is not None and not set(scoring.option_scores) <= set(self.options):
+            raise ValueError("scored options must be field options")
 
-class DropdownFormField(ChoiceFormField):
+
+class KnockoutChoiceFormField(ChoiceFormField):
+    knockout: ChoiceKnockout | None = None
+    scoring: ChoiceScoring | None = None
+
+    @model_validator(mode="after")
+    def check_knockout_and_scoring(self) -> KnockoutChoiceFormField:
+        if self.knockout is not None:
+            if not self.required:
+                raise ValueError("knockout questions must be required")
+            if not set(self.knockout.allowed_values) <= set(self.options):
+                raise ValueError("allowed values must be field options")
+        self._check_option_scores(self.scoring)
+        return self
+
+
+class DropdownFormField(KnockoutChoiceFormField):
     type: Literal["dropdown"] = "dropdown"
 
 
-class RadioFormField(ChoiceFormField):
+class RadioFormField(KnockoutChoiceFormField):
     type: Literal["radio"] = "radio"
 
 
 class CheckboxesFormField(ChoiceFormField):
     type: Literal["checkboxes"] = "checkboxes"
+    scoring: ChoiceScoring | None = None
+
+    @model_validator(mode="after")
+    def check_scoring(self) -> CheckboxesFormField:
+        self._check_option_scores(self.scoring)
+        return self
 
 
 class FileFormField(FormFieldBase):

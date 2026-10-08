@@ -80,9 +80,14 @@ export async function getApplication(applicationId: string): Promise<Application
   return data;
 }
 
-export async function rescoreApplication(applicationId: string): Promise<ApplicationAccepted> {
+export type ApplicationAction = "rescore" | "move-forward" | "mark-reviewed";
+
+export async function runApplicationAction(
+  applicationId: string,
+  action: ApplicationAction,
+): Promise<ApplicationAccepted> {
   const { data } = await api.post<ApplicationAccepted>(
-    `/applications/${applicationId}/rescore`,
+    `/applications/${applicationId}/${action}`,
   );
   return data;
 }

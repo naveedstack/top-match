@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useRescoreApplication } from "@/hooks/use-applications";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/cn";
-import type { LeaderboardItem } from "@/types/applications";
+import { stageLabel, type LeaderboardItem } from "@/types/applications";
 
 type LeaderboardTableProps = {
   items: LeaderboardItem[];
@@ -91,6 +91,7 @@ export function LeaderboardTable({
               <th className="px-4 py-2 font-semibold">Rank</th>
               <th className="px-4 py-2 font-semibold">Candidate Email</th>
               <th className="px-4 py-2 font-semibold">Status</th>
+              <th className="px-4 py-2 font-semibold">Stage</th>
               <th className="px-4 py-2 font-semibold">Score</th>
               <th className="px-4 py-2 font-semibold">Flags</th>
               <th className="px-4 py-2 font-semibold">Applied</th>
@@ -120,6 +121,15 @@ export function LeaderboardTable({
                   <td className="px-4 font-semibold text-on-surface">{item.email}</td>
                   <td className="px-4">
                     <Badge variant={item.status} />
+                  </td>
+                  <td
+                    className={cn(
+                      "px-4 text-label-md",
+                      item.stopped_phase ? "text-error" : "text-on-surface-variant",
+                    )}
+                    title={item.stop_reason ?? undefined}
+                  >
+                    {stageLabel(item)}
                   </td>
                   <td className="px-4 font-mono text-headline-sm font-bold text-on-surface">
                     {formatScore(item.score)}
@@ -220,7 +230,7 @@ function RescoreButton({
       type="button"
     >
       <Icon className="text-[14px]" name="refresh" />
-      {rescore.isPending ? "Rescoring…" : "Rescore"}
+      {rescore.isPending ? "Retrying…" : "Retry"}
     </button>
   );
 }

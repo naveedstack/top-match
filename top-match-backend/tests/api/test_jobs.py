@@ -66,6 +66,7 @@ async def test_list_jobs_is_scoped_to_current_recruiter(
         "scored": 0,
         "refused": 0,
         "failed": 0,
+        "knocked_out": 0,
     }
 
 
@@ -104,6 +105,7 @@ async def test_list_jobs_includes_application_counts(
         "scored": 1,
         "refused": 1,
         "failed": 1,
+        "knocked_out": 0,
     }
 
 
@@ -120,6 +122,7 @@ async def test_job_detail_includes_zero_application_counts(client: AsyncClient) 
         "scored": 0,
         "refused": 0,
         "failed": 0,
+        "knocked_out": 0,
     }
 
 

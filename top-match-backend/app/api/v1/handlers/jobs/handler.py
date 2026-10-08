@@ -1,8 +1,9 @@
 from uuid import UUID
 
+from fastapi import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ApplicationStatus, Recruiter
+from app.models import ApplicationStatus, Recruiter, ScreeningPhase
 from app.schemas.applications import ExportRequest, LeaderboardResponse
 from app.schemas.jobs import (
     JobCreate,
@@ -51,17 +52,22 @@ async def get_leaderboard(
     db: AsyncSession,
     recruiter: Recruiter,
     job_id: UUID,
-    status: ApplicationStatus | None,
+    statuses: list[ApplicationStatus] | None,
+    stage: ScreeningPhase | None,
     limit: int,
     offset: int,
 ) -> LeaderboardResponse:
     return await applications_service.get_leaderboard(
-        db, job_id, recruiter.id, status=status, limit=limit, offset=offset
+        db, job_id, recruiter.id, statuses=statuses, stage=stage, limit=limit, offset=offset
     )
 
 
 async def export_job(
     db: AsyncSession, recruiter: Recruiter, job_id: UUID, body: ExportRequest
-) -> str:
+) -> Response:
     content, _ids = await exports_service.export_job(db, job_id, recruiter, body)
-    return content
+    return Response(
+        content=content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f'attachment; filename="job-{job_id}-export.csv"'},
+    )

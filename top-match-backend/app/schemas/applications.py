@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, model_validator
 
-from app.models import ApplicationStatus
+from app.models import ApplicationStatus, PhaseOutcome, ScreeningPhase
 from app.schemas.evaluation import Citation
 from app.schemas.jobs import ApplicationCounts
 
@@ -60,6 +60,19 @@ class LeaderboardItem(BaseModel):
     score: int | None
     needs_review: bool
     created_at: datetime
+    current_phase: ScreeningPhase | None
+    stopped_phase: ScreeningPhase | None
+    stop_code: str | None
+    stop_reason: str | None
+    reviewed_at: datetime | None
+
+
+class PhaseResultItem(BaseModel):
+    phase: ScreeningPhase
+    outcome: PhaseOutcome
+    reasons: list[dict[str, Any]]
+    overridden: bool
+    created_at: datetime
 
 
 class LeaderboardResponse(BaseModel):
@@ -84,6 +97,13 @@ class ApplicationDetailResponse(BaseModel):
     needs_review: bool | None
     resume_url: str | None
     answers: list[ApplicationAnswerItem]
+    current_phase: ScreeningPhase | None
+    stopped_phase: ScreeningPhase | None
+    stop_code: str | None
+    stop_reason: str | None
+    reviewed_at: datetime | None
+    answers_score: int | None
+    phase_results: list[PhaseResultItem]
 
 
 class ExportRequest(BaseModel):

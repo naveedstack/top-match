@@ -10,20 +10,20 @@ import { Button } from "@/components/ui/button";
 import { useJobs } from "@/hooks/use-jobs";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { cn } from "@/lib/cn";
-import type { ApplicationCounts, JobListItem, JobStatus } from "@/types/jobs";
+import { STATUS_LABEL } from "@/types/applications";
+import { EMPTY_COUNTS, type ApplicationCounts, type JobListItem, type JobStatus } from "@/types/jobs";
 
 type StatusFilter = "all" | JobStatus;
 
-const PIPELINE_STATUSES = ["received", "processing", "scored", "refused", "failed"] as const;
+const PIPELINE_STATUSES = [
+  "received",
+  "processing",
+  "scored",
+  "knocked_out",
+  "refused",
+  "failed",
+] as const;
 const EMPTY_JOBS: JobListItem[] = [];
-
-const EMPTY_COUNTS: ApplicationCounts = {
-  received: 0,
-  processing: 0,
-  scored: 0,
-  refused: 0,
-  failed: 0,
-};
 
 function sumCounts(jobs: JobListItem[]): ApplicationCounts {
   return jobs.reduce(
@@ -33,6 +33,7 @@ function sumCounts(jobs: JobListItem[]): ApplicationCounts {
       scored: acc.scored + job.application_counts.scored,
       refused: acc.refused + job.application_counts.refused,
       failed: acc.failed + job.application_counts.failed,
+      knocked_out: acc.knocked_out + job.application_counts.knocked_out,
     }),
     EMPTY_COUNTS,
   );
@@ -55,7 +56,7 @@ function PipelineChip({
 }) {
   const failed = status === "failed";
   const processing = status === "processing";
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
+  const label = STATUS_LABEL[status];
 
   return (
     <div
@@ -167,11 +168,12 @@ export function JobsList() {
         <CreateJobButton />
       </div>
 
-      <div className="grid grid-cols-2 gap-space-md md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-space-md md:grid-cols-4 lg:grid-cols-7">
         <MetricCard icon="work" label="Open jobs" value={openCount} />
         <MetricCard icon="inbox" label="Received" value={totals.received} />
         <MetricCard icon="sync" label="Processing" value={totals.processing} />
         <MetricCard icon="fact_check" label="Scored" value={totals.scored} />
+        <MetricCard icon="filter_alt_off" label="Knocked out" value={totals.knocked_out} />
         <MetricCard icon="block" label="Refused" value={totals.refused} />
         <MetricCard icon="error" label="Failed" value={totals.failed} />
       </div>

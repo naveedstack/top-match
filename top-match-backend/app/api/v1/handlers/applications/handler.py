@@ -1,10 +1,15 @@
 from uuid import UUID, uuid4
 
-from fastapi import Request
+from fastapi import Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import InvalidResumeError, ResumeTooLargeError
+from app.core.exceptions import (
+    AttachmentNotFoundError,
+    InvalidResumeError,
+    ResumeNotFoundError,
+    ResumeTooLargeError,
+)
 from app.models import Recruiter
 from app.schemas.applications import (
     ApplicationAccepted,
@@ -62,6 +67,9 @@ async def _read_limited_body(request: Request, limit: int) -> bytes:
 
 
 async def store_local_put(file_id: UUID, request: Request) -> None:
+    # Direct PUTs exist only for local storage; S3 uploads go to the presigned URL.
+    if settings.STORAGE_BACKEND != "local":
+        raise ResumeNotFoundError
     content_type = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
     pdf_bytes = await _read_limited_body(request, settings.MAX_UPLOAD_BYTES)
     await applications_service.store_local_put(file_id, pdf_bytes, content_type)
@@ -95,6 +103,8 @@ async def create_attachment_upload_url(
 
 
 async def store_attachment_local_put(file_id: UUID, request: Request) -> None:
+    if settings.STORAGE_BACKEND != "local":
+        raise AttachmentNotFoundError
     content_type = (request.headers.get("content-type") or "").split(";")[0].strip().lower()
     payload = await _read_limited_body(request, settings.MAX_UPLOAD_BYTES)
     await attachments_service.store_local_put(file_id, payload, content_type)
@@ -125,9 +135,32 @@ async def rescore_application(
     return ApplicationAccepted(id=application.id, status=application.status)
 
 
-async def get_resume_pdf(db: AsyncSession, token: str) -> bytes:
-    return await applications_service.get_resume_pdf(db, token)
+async def move_forward(
+    db: AsyncSession, recruiter: Recruiter, application_id: UUID
+) -> ApplicationAccepted:
+    application = await applications_service.move_forward(db, application_id, recruiter)
+    return ApplicationAccepted(id=application.id, status=application.status)
 
 
-async def get_attachment_file(db: AsyncSession, token: str) -> tuple[bytes, str, str]:
-    return await attachments_service.get_attachment_file(db, token)
+async def mark_reviewed(
+    db: AsyncSession, recruiter: Recruiter, application_id: UUID
+) -> ApplicationAccepted:
+    application = await applications_service.mark_reviewed(db, application_id, recruiter)
+    return ApplicationAccepted(id=application.id, status=application.status)
+
+
+async def get_resume_pdf(db: AsyncSession, token: str) -> Response:
+    pdf_bytes = await applications_service.get_resume_pdf(db, token)
+    return Response(content=pdf_bytes, media_type="application/pdf")
+
+
+async def get_attachment_file(db: AsyncSession, token: str) -> Response:
+    payload, content_type, filename = await attachments_service.get_attachment_file(db, token)
+    return Response(
+        content=payload,
+        media_type=content_type,
+        headers={
+            "Content-Disposition": attachments_service.content_disposition(filename),
+            "X-Content-Type-Options": "nosniff",
+        },
+    )

@@ -32,6 +32,7 @@ from app.core.logging import configure_logging
 from app.core.rate_limit import limiter
 from app.core.request_id import RequestIdMiddleware
 from app.db.session import engine
+from app.services import screening_queue
 from app.services.pipeline import recover_stuck_applications
 from app.services.retention import purge_expired_applications
 
@@ -84,6 +85,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         await sweep
     with suppress(asyncio.CancelledError):
         await retention
+    await screening_queue.drain()
     await engine.dispose()
 
 

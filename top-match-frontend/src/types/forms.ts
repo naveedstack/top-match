@@ -9,6 +9,31 @@ type FormFieldBase = {
   required: boolean;
 };
 
+export type ChoiceKnockout = {
+  reason: string;
+  allowed_values: string[];
+};
+
+export type NumberKnockout = {
+  reason: string;
+  min: number;
+};
+
+export type ChoiceScoring = {
+  weight: number;
+  option_scores: Record<string, number>;
+};
+
+export type NumberScoring = {
+  weight: number;
+  target: number;
+};
+
+export type FormWarning = {
+  field_id: string;
+  message: string;
+};
+
 export type TextFormField = FormFieldBase & {
   type: "text";
   multiline: boolean;
@@ -20,11 +45,16 @@ export type NumberFormField = FormFieldBase & {
   min?: number | null;
   max?: number | null;
   integer_only: boolean;
+  knockout?: NumberKnockout | null;
+  scoring?: NumberScoring | null;
 };
 
 export type ChoiceFormField = FormFieldBase & {
   type: "dropdown" | "radio" | "checkboxes";
   options: string[];
+  // Only dropdown and radio fields can be knockouts.
+  knockout?: ChoiceKnockout | null;
+  scoring?: ChoiceScoring | null;
 };
 
 export type FileFormField = FormFieldBase & {
@@ -67,6 +97,22 @@ export const FORM_FIELD_TYPES: Array<{ type: FormFieldType; label: string; icon:
   { type: "checkboxes", label: "Multiple choice", icon: "check_box" },
   { type: "file", label: "File upload", icon: "attach_file" },
 ];
+
+export const MAX_WEIGHT = 10;
+
+export const YES_NO_OPTIONS = ["Yes", "No"];
+
+export function newYesNoKnockout(): ChoiceFormField {
+  return {
+    id: crypto.randomUUID(),
+    type: "radio",
+    label: "",
+    help_text: "",
+    required: true,
+    options: [...YES_NO_OPTIONS],
+    knockout: { reason: "", allowed_values: ["Yes"] },
+  };
+}
 
 export const MAX_FORM_FIELDS = 20;
 export const MAX_FILE_FIELDS = 5;

@@ -1,4 +1,4 @@
-import type { FormField } from "@/types/forms";
+import type { FormField, FormWarning } from "@/types/forms";
 
 export type JobStatus = "open" | "closed";
 
@@ -8,7 +8,21 @@ export type ApplicationCounts = {
   scored: number;
   refused: number;
   failed: number;
+  knocked_out: number;
 };
+
+export const EMPTY_COUNTS: ApplicationCounts = {
+  received: 0,
+  processing: 0,
+  scored: 0,
+  refused: 0,
+  failed: 0,
+  knocked_out: 0,
+};
+
+export function totalApplications(counts: ApplicationCounts): number {
+  return Object.values(counts).reduce((sum, value) => sum + value, 0);
+}
 
 export type Job = {
   id: string;
@@ -22,6 +36,7 @@ export type Job = {
   status: JobStatus;
   created_at: string;
   closed_at: string | null;
+  form_warnings: FormWarning[];
 };
 
 export type JobListItem = Job & {

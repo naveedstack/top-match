@@ -10,10 +10,19 @@ render them. Recruiter routes look up by `id` and `recruiter_id`; another recrui
 not 403.
 
 The leaderboard is polled (no SSE). Items are sorted by `score` descending, nulls last,
-then `created_at`. `counts` always cover every status on the job, even when `status` is
-filtered. Job detail and leaderboard include `screening_disclaimer`. CSV export takes
+then `created_at`. `status` may repeat (`?status=scored&status=processing`) and `stage`
+filters by `current_phase` (`accept`, `knockout`, `answers`, `resume`). `counts` always
+cover every status on the job, including `knocked_out`, even when filtered. Job detail and leaderboard include `screening_disclaimer`. CSV export takes
 either `application_ids` or `top_n`. The first CSV row is the disclaimer; cells that
-start with `=`, `+`, `-`, `@`, tab, or carriage return are prefixed with `'`.
+start with `=`, `+`, `-`, `@`, tab, or carriage return are prefixed with `'`. The CSV
+includes `stopped at` (phase) and `reason` columns for applicants that were not scored.
+
+Radio, dropdown and number form fields may carry a `knockout` (`allowed_values` or `min`,
+plus a recruiter-written `reason`; the field must be `required`). A yes/no knockout is a
+radio field with `Yes`/`No` options. Radio, dropdown, checkboxes and number fields may
+carry `scoring` weights for the code-only answers score. Neither is returned on the public
+job endpoint. Job responses include `form_warnings` for knockouts that look like age
+proxies; warnings never block saving.
 
 With a registered company account, recruiter routes require
 `Authorization: Bearer {{token}}` using the access JWT from `/api/v1/auth/register` or

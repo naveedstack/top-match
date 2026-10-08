@@ -9,7 +9,8 @@ export type BadgeVariant =
   | "processing"
   | "scored"
   | "refused"
-  | "failed";
+  | "failed"
+  | "knocked_out";
 
 type BadgeProps = {
   variant: BadgeVariant;
@@ -45,6 +46,10 @@ const variantClass: Record<BadgeVariant, { wrap: string; dot: string }> = {
     wrap: "bg-status-failed-container text-status-failed",
     dot: "bg-status-failed",
   },
+  knocked_out: {
+    wrap: "bg-status-knocked-out-container text-status-knocked-out",
+    dot: "bg-status-knocked-out",
+  },
 };
 
 const defaultLabel: Record<BadgeVariant, string> = {
@@ -55,6 +60,7 @@ const defaultLabel: Record<BadgeVariant, string> = {
   scored: "Scored",
   refused: "Refused",
   failed: "Failed",
+  knocked_out: "Knocked out",
 };
 
 export function Badge({ variant, children }: BadgeProps) {

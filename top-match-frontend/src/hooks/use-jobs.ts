@@ -43,11 +43,15 @@ export function usePublicJob(slug: string) {
   });
 }
 
-export function useLeaderboard(jobId: string, query: LeaderboardQuery = {}) {
+export function useLeaderboard(
+  jobId: string,
+  query: LeaderboardQuery = {},
+  { enabled = true }: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: queryKeys.jobs.leaderboard(jobId, query),
     queryFn: () => getLeaderboard(jobId, query),
-    enabled: Boolean(jobId),
+    enabled: Boolean(jobId) && enabled,
     refetchInterval: (result) => (result.state.error ? false : 3_000),
     retry: (failureCount, error) => {
       if (isNotFoundError(error)) {

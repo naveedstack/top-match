@@ -9,12 +9,18 @@ import { Icon } from "@/components/icon";
 import { Badge } from "@/components/ui/badge";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
-import { useApplication, useRescoreApplication } from "@/hooks/use-applications";
+import { useApplication, useApplicationAction } from "@/hooks/use-applications";
 import { useExportJob, useJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
 import { csvFilenameFromTitle, downloadTextFile } from "@/lib/download";
 import { downloadAttachment } from "@/lib/download-attachment";
-import type { Citation } from "@/types/applications";
+import {
+  PHASE_LABEL,
+  stageLabel,
+  type ApplicationDetail,
+  type Citation,
+  type PhaseOutcome,
+} from "@/types/applications";
 import type { ApplicationAnswer } from "@/types/forms";
 
 type ApplicationDetailViewProps = {
@@ -99,7 +105,9 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
   const jobQuery = useJob(jobId);
   const applicationQuery = useApplication(applicationId);
   const exportJob = useExportJob(jobId);
-  const rescore = useRescoreApplication(jobId, applicationId);
+  const retry = useApplicationAction(jobId, applicationId, "rescore");
+  const moveForward = useApplicationAction(jobId, applicationId, "move-forward");
+  const markReviewed = useApplicationAction(jobId, applicationId, "mark-reviewed");
   const [actionError, setActionError] = useState("");
 
   const job = jobQuery.data;
@@ -121,10 +129,10 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
     }
   }
 
-  async function onRescore() {
+  async function run(action: typeof retry) {
     setActionError("");
     try {
-      await rescore.mutateAsync();
+      await action.mutateAsync();
     } catch (error) {
       setActionError(getApiErrorMessage(error));
     }
@@ -177,6 +185,7 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
   }
 
   const inFlight = application.status === "received" || application.status === "processing";
+  const retryable = application.status === "failed" || application.status === "refused";
 
   return (
     <div className="flex flex-col gap-space-lg">
@@ -249,15 +258,36 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
               <Icon name="download" />
               Export CSV
             </Button>
-            {application.status === "failed" ? (
+            {application.status === "knocked_out" ? (
               <Button
-                onClick={() => void onRescore()}
-                pending={rescore.isPending}
+                onClick={() => void run(moveForward)}
+                pending={moveForward.isPending}
+                type="button"
+              >
+                <Icon name="arrow_forward" />
+                Move forward anyway
+              </Button>
+            ) : null}
+            {retryable ? (
+              <Button
+                onClick={() => void run(retry)}
+                pending={retry.isPending}
                 type="button"
                 variant="destructive"
               >
                 <Icon name="refresh" />
-                Rescore
+                Retry
+              </Button>
+            ) : null}
+            {retryable && !application.reviewed_at ? (
+              <Button
+                onClick={() => void run(markReviewed)}
+                pending={markReviewed.isPending}
+                type="button"
+                variant="outline"
+              >
+                <Icon name="task_alt" />
+                Mark reviewed
               </Button>
             ) : null}
           </div>
@@ -293,21 +323,26 @@ export function ApplicationDetailView({ jobId, applicationId }: ApplicationDetai
             </p>
           ) : null}
 
-          {application.status === "refused" && application.refusal_reason ? (
+          {application.stopped_phase ? (
             <article className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg shadow-sm">
               <div className="mb-space-md flex items-center gap-2 border-b border-outline-variant pb-space-md">
                 <Icon className="text-on-surface-variant" name="block" />
-                <h2 className="text-headline-sm font-semibold text-on-surface">Refusal reason</h2>
+                <h2 className="text-headline-sm font-semibold text-on-surface">
+                  {stageLabel(application)}
+                </h2>
               </div>
-              <p className="text-body-md text-on-surface-variant">{application.refusal_reason}</p>
+              <p className="text-body-md text-on-surface-variant">
+                {application.stop_reason ?? "No reason recorded."}
+              </p>
+              {application.reviewed_at ? (
+                <p className="mt-2 text-body-sm text-on-surface-variant">
+                  Reviewed manually on {formatAppliedAt(application.reviewed_at)}.
+                </p>
+              ) : null}
             </article>
           ) : null}
 
-          {application.status === "failed" ? (
-            <p className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg text-body-md text-on-surface-variant shadow-sm">
-              Scoring failed. Rescore to try again.
-            </p>
-          ) : null}
+          <ScreeningCard application={application} />
 
           {application.key_strengths.length > 0 ? (
             <EvidenceCard
@@ -395,6 +430,64 @@ function formatAnswerValue(answer: ApplicationAnswer, onDownload: () => void) {
     return answer.value.length > 0 ? answer.value.join(", ") : "—";
   }
   return String(answer.value);
+}
+
+const OUTCOME_LABEL: Record<PhaseOutcome, string> = {
+  pass: "Passed",
+  fail: "Failed",
+  review: "Review",
+  error: "Error",
+  skipped: "Skipped",
+};
+
+function ScreeningCard({ application }: { application: ApplicationDetail }) {
+  if (application.phase_results.length === 0) {
+    return null;
+  }
+  return (
+    <article className="rounded-xl border border-outline-variant bg-surface-container-lowest p-space-lg shadow-sm">
+      <div className="mb-space-md flex items-center justify-between border-b border-outline-variant pb-space-md">
+        <div className="flex items-center gap-2">
+          <Icon className="text-secondary" name="checklist" />
+          <h2 className="text-headline-sm font-semibold text-on-surface">Screening</h2>
+        </div>
+        {application.answers_score !== null ? (
+          <span className="rounded bg-surface-container px-2 py-0.5 text-label-sm font-semibold text-secondary">
+            Answers score {application.answers_score}/100
+          </span>
+        ) : null}
+      </div>
+      <ol className="flex flex-col gap-2">
+        {application.phase_results.map((result, index) => (
+          <li
+            className="flex flex-col gap-0.5 text-body-sm sm:flex-row sm:items-baseline sm:gap-2"
+            key={`${result.phase}-${index}`}
+          >
+            <span className="w-24 shrink-0 font-semibold text-on-surface">
+              {PHASE_LABEL[result.phase]}
+            </span>
+            <span
+              className={
+                result.outcome === "fail" || result.outcome === "error"
+                  ? "text-error"
+                  : "text-on-surface-variant"
+              }
+            >
+              {OUTCOME_LABEL[result.outcome]}
+              {result.overridden ? " · recruiter override" : null}
+              {result.reasons.length > 0
+                ? ` · ${result.reasons.map((reason) => reason.message).join("; ")}`
+                : null}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <p className="mt-space-md text-body-sm text-on-surface-variant">
+        The answers score is computed from your question weights and is separate from the
+        resume score.
+      </p>
+    </article>
+  );
 }
 
 function EvidenceCard({

@@ -113,8 +113,8 @@ function Hero() {
         </h1>
         <p className="max-w-xl text-body-lg text-on-surface-variant">
           Recruiters paste a hosted apply link on LinkedIn or Indeed. Candidates submit an email and
-          PDF resume with zero account creation. Top Match ranks them against your rubric in real
-          time.
+          PDF resume with zero account creation. Top Match ranks them against your requirements
+          within minutes.
         </p>
         <div className="flex flex-col items-stretch gap-space-sm pt-2 sm:flex-row sm:items-center">
           <Link
@@ -184,7 +184,7 @@ function PipelineMock() {
         <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div>
             <span className="text-label-sm tracking-wider text-on-surface-variant uppercase">
-              Live Pipeline
+              Example pipeline
             </span>
             <h3 className="text-headline-sm font-semibold text-on-surface">
               Senior Backend Engineer (Distributed Systems)
@@ -192,7 +192,7 @@ function PipelineMock() {
           </div>
           <span className="inline-flex items-center gap-1.5 self-start rounded bg-secondary-fixed/50 px-2 py-1 text-label-sm text-secondary sm:self-auto">
             <span className="size-2 animate-pulse rounded-full bg-secondary" />
-            <span>Active Rubric v2.4</span>
+            <span>Sample data</span>
           </span>
         </div>
         <div className="mt-space-md grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -259,8 +259,8 @@ function PipelineMock() {
         />
       </div>
       <div className="flex items-center justify-between border-t border-outline-variant bg-surface-container-low px-space-md py-space-sm text-[11px] text-on-surface-variant">
-        <span>Real-time polling: active</span>
-        <span className="font-mono">Live Sync: 2s latency</span>
+        <span>Leaderboard refreshes automatically</span>
+        <span className="font-mono">Example only</span>
       </div>
     </div>
   );
@@ -430,14 +430,14 @@ function HowItWorks() {
             3
           </div>
           <h3 className="mb-2 text-headline-sm font-semibold text-on-surface">
-            Watch the live leaderboard & export
+            Watch the leaderboard & export
           </h3>
           <p className="mb-4 text-body-md text-on-surface-variant">
-            Gemini evaluates resumes strictly against rubric requirements, provides verbatim
-            citations, and exports verified top candidates straight to CSV or ATS.
+            Gemini evaluates resumes against your requirements, quotes the resume as evidence, and
+            you export your top candidates to CSV.
           </p>
           <div className="flex items-center justify-between rounded-lg border border-outline-variant bg-surface-container-low p-3 text-[11px] text-on-surface-variant">
-            <span>Leaderboard sync: Active</span>
+            <span>Leaderboard refreshes automatically</span>
             <span className="font-semibold text-secondary">Export to CSV →</span>
           </div>
         </div>
@@ -454,7 +454,7 @@ function Product() {
           Product Architecture
         </span>
         <h2 className="mt-1 text-headline-lg font-semibold tracking-tight text-on-surface">
-          Designed for clinical precision and high-throughput evaluation
+          Designed for precise, auditable screening
         </h2>
       </div>
 
@@ -465,16 +465,17 @@ function Product() {
             <span>01 · Triage Intelligence</span>
           </div>
           <h3 className="text-headline-md font-semibold text-on-surface">
-            Live ranked leaderboard with anomaly detection
+            Ranked leaderboard with review flags
           </h3>
           <p className="text-body-md text-on-surface-variant">
-            Applications update in real time every 2 seconds without page refreshes. Track incoming
-            resumes across 5 canonical states, spot prompt-injection attempts, and flag unverified
-            citations before interviews happen.
+            The leaderboard refreshes on its own as resumes are scored, usually within minutes.
+            Knockout questions run first, in code, so only qualified applicants reach resume
+            scoring. Spot prompt-injection attempts and flag unverified citations before
+            interviews happen.
           </p>
           <ul className="space-y-2 pt-2">
-            <FeatureItem text="5 Canonical States: Received, Processing, Scored, Refused, Failed" />
-            <FeatureItem text="Automated prompt-injection and adversarial PDF screening" />
+            <FeatureItem text="Knocked-out, refused and failed applicants stay visible with the reason" />
+            <FeatureItem text="Prompt-injection flags; hidden PDF text is never read (resumes are OCR'd from page images)" />
           </ul>
         </div>
         <div className="lg:col-span-7">
@@ -489,7 +490,7 @@ function Product() {
                 </span>
               </div>
               <span className="rounded bg-secondary-fixed/30 px-2 py-0.5 text-label-sm text-secondary">
-                Polling Active (2.0s)
+                Example
               </span>
             </div>
             <div className="space-y-2">
@@ -501,7 +502,7 @@ function Product() {
                       k.lindqvist@telecom.se
                     </div>
                     <div className="text-body-sm text-on-surface-variant">
-                      Matches 4/4 Core Criteria · Stockholm (Remote)
+                      All citations verified · Stockholm (Remote)
                     </div>
                   </div>
                 </div>
@@ -520,7 +521,7 @@ function Product() {
                       j.doe@security-audit.com
                     </div>
                     <div className="text-body-sm text-on-surface-variant">
-                      Matches 3/4 Core Criteria · San Francisco, CA
+                      Most citations verified · San Francisco, CA
                     </div>
                   </div>
                 </div>
@@ -544,7 +545,7 @@ function Product() {
                   </div>
                 </div>
                 <span className="rounded-full bg-error px-2 py-0.5 text-[11px] font-semibold text-on-error">
-                  Refused
+                  Needs review
                 </span>
               </div>
             </div>
@@ -637,13 +638,13 @@ function Product() {
             Application dossier with exact resume citations
           </h3>
           <p className="text-body-md text-on-surface-variant">
-            Understand every score. Top Match extracts verbatim pull quotes mapped directly to page
-            numbers and rubric criteria. AI serves strictly as an objective filtering aid; hiring
-            remains 100% human-governed.
+            Understand every score. Top Match backs each strength and gap with a quote from the
+            resume, and drops quotes it can&apos;t find in the text. AI is a filtering aid; hiring
+            decisions stay with people.
           </p>
           <ul className="space-y-2 pt-2">
-            <FeatureItem text="Verbatim quote verification against parsed PDF documents" />
-            <FeatureItem text="Zero hallucinated experience or ungrounded qualifications" />
+            <FeatureItem text="Quotes checked against the resume's OCR text" />
+            <FeatureItem text="Unverified quotes are dropped and the application is flagged for review" />
           </ul>
         </div>
         <div className="lg:col-span-7">
@@ -651,7 +652,7 @@ function Product() {
             <div className="mb-3 flex items-center justify-between border-b border-outline-variant pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-headline-sm font-semibold text-on-surface">
-                  Candidate Dossier: Marcus Chen
+                  Example dossier: Marcus Chen
                 </span>
                 <span className="rounded bg-surface-container px-2 py-0.5 font-mono text-label-sm text-on-surface">
                   ID: app_89f02
@@ -665,10 +666,10 @@ function Product() {
               <div className="rounded-lg border border-outline-variant bg-surface-container-low p-3">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-label-sm font-semibold text-on-surface">
-                    Requirement: Distributed consensus (Raft/Paxos)
+                    Strength: Distributed consensus (Raft/Paxos)
                   </span>
                   <span className="rounded bg-tertiary-fixed px-2 py-0.5 text-[11px] font-semibold text-on-tertiary-container">
-                    Verified · Match
+                    Quote verified
                   </span>
                 </div>
                 <blockquote className="my-1.5 border-l-2 border-secondary pl-2 text-xs text-on-surface-variant italic">
@@ -676,16 +677,16 @@ function Product() {
                   operations per second with zero-loss failover.&quot;
                 </blockquote>
                 <div className="font-mono text-[11px] text-outline">
-                  Source: Resume_Marcus_Chen.pdf · Page 2, Paragraph 4
+                  Source: resume text
                 </div>
               </div>
               <div className="rounded-lg border border-outline-variant bg-surface-container-lowest p-3">
                 <div className="mb-1.5 flex items-center justify-between">
                   <span className="text-label-sm font-semibold text-on-surface">
-                    Requirement: 5+ years Production Go
+                    Strength: Production Go
                   </span>
                   <span className="rounded bg-tertiary-fixed px-2 py-0.5 text-[11px] font-semibold text-on-tertiary-container">
-                    Verified · Match
+                    Quote verified
                   </span>
                 </div>
                 <blockquote className="my-1.5 border-l-2 border-secondary pl-2 text-xs text-on-surface-variant italic">
@@ -693,7 +694,7 @@ function Product() {
                   proprietary Go RPC framework.&quot;
                 </blockquote>
                 <div className="font-mono text-[11px] text-outline">
-                  Source: Resume_Marcus_Chen.pdf · Page 1, Section: Experience
+                  Source: resume text
                 </div>
               </div>
             </div>

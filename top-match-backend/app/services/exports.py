@@ -16,7 +16,16 @@ from app.schemas.forms import parse_form_fields
 from app.services import jobs as jobs_service
 
 _FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
-_CSV_HEADER = ["rank", "email", "score", "key strengths", "missing requirements", "applied at"]
+_CSV_HEADER = [
+    "rank",
+    "email",
+    "score",
+    "key strengths",
+    "missing requirements",
+    "applied at",
+    "stopped at",
+    "reason",
+]
 
 
 def escape_csv_cell(value: object) -> str:
@@ -63,6 +72,10 @@ def render_csv(rows: list[tuple[int, Application]], form_fields: object | None =
                 escape_csv_cell(_join(strengths)),
                 escape_csv_cell(_join(missing)),
                 escape_csv_cell(application.created_at.isoformat()),
+                escape_csv_cell(
+                    "" if application.stopped_phase is None else application.stopped_phase.value
+                ),
+                escape_csv_cell(application.stop_reason),
                 *[escape_csv_cell(item) for item in extra],
             ]
         )

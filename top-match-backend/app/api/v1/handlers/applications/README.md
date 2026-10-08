@@ -24,9 +24,21 @@ Custom file fields use the same sign/PUT/complete pattern on
 `POST /api/v1/public/attachments/{file_id}/complete`. Allowed types are the field's `accept`
 list (pdf, docx, png, jpeg). Recruiters download them from `GET /api/v1/public/attachments/{token}`.
 
+Screening runs in phases: `accept` → `knockout` → `answers` → `resume`. Each phase writes a
+`phase_results` row; a failed phase stops the run, so only applications that pass the
+code-only knockout checks reach OCR and the model. The detail response includes
+`current_phase`, `stopped_phase`, `stop_code`, `stop_reason`, `answers_score` (kept separate
+from the resume `score`) and `phase_results`.
+
 Recruiters poll the job leaderboard, open `GET /api/v1/applications/{id}` for the
-evaluation plus a 15-minute `resume_url`, and `POST /api/v1/applications/{id}/rescore`
-to retry a `failed` row. `GET /api/v1/public/resumes/{token}` streams the PDF (no
+evaluation plus a 15-minute `resume_url`, and act on applicants that were not scored:
+
+- `POST /api/v1/applications/{id}/rescore` retries a `failed` or `refused` row from the
+  phase that stopped it.
+- `POST /api/v1/applications/{id}/move-forward` overrides a `knocked_out` row. The
+  override is recorded with the recruiter id and the run continues at `answers`.
+- `POST /api/v1/applications/{id}/mark-reviewed` records a manual review of a `failed`
+  or `refused` row and sets `reviewed_at`. The status does not change. `GET /api/v1/public/resumes/{token}` streams the PDF (no
 Bearer header). Another recruiter's application is 404.
 
 Replace `{{host}}` with `http://127.0.0.1:8000`, `{{slug}}` with the job `public_slug`,
@@ -113,10 +125,24 @@ GET {{host}}/api/v1/applications/{{applicationId}} HTTP/1.1
 Authorization: Bearer {{token}}
 ```
 
-### Rescore Failed Application
+### Retry Failed or Refused Application
 
 ```http
 POST {{host}}/api/v1/applications/{{applicationId}}/rescore HTTP/1.1
+Authorization: Bearer {{token}}
+```
+
+### Move Knocked-Out Application Forward
+
+```http
+POST {{host}}/api/v1/applications/{{applicationId}}/move-forward HTTP/1.1
+Authorization: Bearer {{token}}
+```
+
+### Mark Failed or Refused Application as Reviewed
+
+```http
+POST {{host}}/api/v1/applications/{{applicationId}}/mark-reviewed HTTP/1.1
 Authorization: Bearer {{token}}
 ```
 

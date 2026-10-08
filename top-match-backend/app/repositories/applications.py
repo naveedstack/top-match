@@ -1,11 +1,11 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
-from sqlalchemy import func, select, update
+from sqlalchemy import ColumnElement, and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models import Application, ApplicationStatus, Evaluation, Job
+from app.models import Application, ApplicationStatus, Evaluation, Job, ScreeningPhase
 
 
 async def get_by_job_and_email(
@@ -26,6 +26,7 @@ async def get_by_id(
             selectinload(Application.job),
             selectinload(Application.evaluation),
             selectinload(Application.attachments),
+            selectinload(Application.phase_results),
         )
         .where(Application.id == application_id)
     )
@@ -45,6 +46,7 @@ async def get_by_id_and_recruiter(
             selectinload(Application.job),
             selectinload(Application.evaluation),
             selectinload(Application.attachments),
+            selectinload(Application.phase_results),
         )
         .where(Application.id == application_id, Job.recruiter_id == recruiter_id)
     )
@@ -67,13 +69,13 @@ async def add(session: AsyncSession, application: Application) -> Application:
 async def claim_for_processing(
     session: AsyncSession, application_id: UUID, *, reclaim_processing: bool = False
 ) -> bool:
-    allowed = [ApplicationStatus.RECEIVED, ApplicationStatus.FAILED]
+    allowed = [ApplicationStatus.RECEIVED]
     if reclaim_processing:
         allowed.append(ApplicationStatus.PROCESSING)
     result = await session.execute(
         update(Application)
         .where(Application.id == application_id, Application.status.in_(allowed))
-        .values(status=ApplicationStatus.PROCESSING)
+        .values(status=ApplicationStatus.PROCESSING, processing_started_at=datetime.now(UTC))
         .returning(Application.id)
         .execution_options(synchronize_session=False)
     )
@@ -83,34 +85,61 @@ async def claim_for_processing(
     return claimed
 
 
+async def delete(session: AsyncSession, application: Application) -> None:
+    await session.delete(application)
+    await session.flush()
+
+
 async def list_stuck_ids(session: AsyncSession, cutoff: datetime) -> list[UUID]:
+    """Received rows never picked up, and processing rows with no progress since `cutoff`."""
     result = await session.execute(
         select(Application.id).where(
-            Application.status.in_((ApplicationStatus.RECEIVED, ApplicationStatus.PROCESSING)),
-            Application.created_at <= cutoff,
+            or_(
+                and_(
+                    Application.status == ApplicationStatus.RECEIVED,
+                    Application.created_at <= cutoff,
+                ),
+                and_(
+                    Application.status == ApplicationStatus.PROCESSING,
+                    func.coalesce(Application.processing_started_at, Application.created_at)
+                    <= cutoff,
+                ),
+            )
         )
     )
     return list(result.scalars().all())
+
+
+def _leaderboard_filters(
+    job_id: UUID,
+    statuses: list[ApplicationStatus] | None,
+    stage: ScreeningPhase | None,
+) -> list[ColumnElement[bool]]:
+    filters: list[ColumnElement[bool]] = [Application.job_id == job_id]
+    if statuses:
+        filters.append(Application.status.in_(statuses))
+    if stage is not None:
+        filters.append(Application.current_phase == stage)
+    return filters
 
 
 async def list_for_leaderboard(
     session: AsyncSession,
     job_id: UUID,
     *,
-    status: ApplicationStatus | None,
+    statuses: list[ApplicationStatus] | None,
+    stage: ScreeningPhase | None = None,
     limit: int,
     offset: int,
 ) -> list[tuple[Application, bool]]:
     stmt = (
         select(Application, Evaluation.needs_review)
         .outerjoin(Evaluation, Evaluation.application_id == Application.id)
-        .where(Application.job_id == job_id)
+        .where(*_leaderboard_filters(job_id, statuses, stage))
         .order_by(Application.score.desc().nulls_last(), Application.created_at.asc())
         .limit(limit)
         .offset(offset)
     )
-    if status is not None:
-        stmt = stmt.where(Application.status == status)
     result = await session.execute(stmt)
     rows: list[tuple[Application, bool]] = []
     for application, needs_review in result.all():
@@ -119,11 +148,17 @@ async def list_for_leaderboard(
 
 
 async def count_for_leaderboard(
-    session: AsyncSession, job_id: UUID, *, status: ApplicationStatus | None
+    session: AsyncSession,
+    job_id: UUID,
+    *,
+    statuses: list[ApplicationStatus] | None,
+    stage: ScreeningPhase | None = None,
 ) -> int:
-    stmt = select(func.count()).select_from(Application).where(Application.job_id == job_id)
-    if status is not None:
-        stmt = stmt.where(Application.status == status)
+    stmt = (
+        select(func.count())
+        .select_from(Application)
+        .where(*_leaderboard_filters(job_id, statuses, stage))
+    )
     result = await session.execute(stmt)
     return int(result.scalar_one())
 

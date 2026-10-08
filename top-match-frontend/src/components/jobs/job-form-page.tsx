@@ -15,13 +15,7 @@ import { useJob, useUpdateJob } from "@/hooks/use-jobs";
 import { getApiErrorMessage, isNotFoundError } from "@/lib/api-error";
 import { validateFormFields } from "@/lib/form-validation";
 import type { FormField } from "@/types/forms";
-import type { ApplicationCounts } from "@/types/jobs";
-
-function sumCounts(counts: ApplicationCounts): number {
-  return (
-    counts.received + counts.processing + counts.scored + counts.refused + counts.failed
-  );
-}
+import { totalApplications } from "@/types/jobs";
 
 function displayUrl(url: string): string {
   return url.replace(/^https?:\/\//, "");
@@ -38,10 +32,11 @@ export function JobFormPage({ jobId }: { jobId: string }) {
   const [formError, setFormError] = useState("");
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState(false);
+  const [savedWithWarnings, setSavedWithWarnings] = useState(false);
 
   const draft = fields ?? job?.form_fields ?? [];
   const locked = job?.form_locked ?? false;
-  const applicationCount = job ? sumCounts(job.application_counts) : 0;
+  const applicationCount = job ? totalApplications(job.application_counts) : 0;
 
   async function copyLink() {
     if (!job) {
@@ -71,7 +66,12 @@ export function JobFormPage({ jobId }: { jobId: string }) {
     setFieldsError("");
     setFormError("");
     try {
-      await updateJob.mutateAsync({ form_fields: draft });
+      const saved = await updateJob.mutateAsync({ form_fields: draft });
+      if (saved.form_warnings.length > 0) {
+        // Saved, but stay so the recruiter sees the age-proxy warnings on the fields.
+        setSavedWithWarnings(true);
+        return;
+      }
       router.push(`/jobs/${jobId}`);
     } catch (error) {
       setFormError(getApiErrorMessage(error));
@@ -118,14 +118,22 @@ export function JobFormPage({ jobId }: { jobId: string }) {
               </p>
             ) : null}
             {formError ? <AuthErrorBanner message={formError} /> : null}
+            {savedWithWarnings ? (
+              <p className="rounded-lg border border-outline-variant bg-surface-container-low p-space-sm text-body-sm text-on-surface-variant">
+                Form saved. Some knockout questions may act as age filters; review the warnings
+                below before sharing the apply link.
+              </p>
+            ) : null}
             <FormBuilderWorkspace
               disabled={locked}
               error={fieldsError}
               fields={draft}
               onChange={(next) => {
                 setFieldsError("");
+                setSavedWithWarnings(false);
                 setFields(next);
               }}
+              warnings={job.form_warnings}
             />
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-outline-variant pt-4">
               <p className="flex items-center gap-1.5 text-body-sm text-on-surface-variant">

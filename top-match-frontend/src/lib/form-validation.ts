@@ -79,6 +79,29 @@ export function validateFormFields(fields: FormField[]): string {
     if (field.type === "file" && field.accept.length === 0) {
       return "A file field needs at least one allowed type";
     }
+    const knockoutMessage = validateKnockout(field);
+    if (knockoutMessage) {
+      return knockoutMessage;
+    }
+  }
+  return "";
+}
+
+function validateKnockout(field: FormField): string {
+  const name = field.label || "A knockout question";
+  if ((field.type === "number" || field.type === "dropdown" || field.type === "radio") && field.knockout) {
+    if (!field.required) {
+      return `${name} is a knockout, so it must be required`;
+    }
+    if (!field.knockout.reason.trim()) {
+      return `${name} needs a reason to show when someone fails it`;
+    }
+    if (field.type !== "number" && field.knockout.allowed_values.length === 0) {
+      return `${name} needs at least one passing answer`;
+    }
+  }
+  if (field.type === "number" && field.scoring && !(field.scoring.target > 0)) {
+    return `${field.label || "A number question"} needs a target above zero`;
   }
   return "";
 }

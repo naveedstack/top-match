@@ -1,26 +1,44 @@
+"""Screening runner: accept -> knockout -> answers -> resume.
+
+Each phase returns a PhaseRun and never touches the database. The runner records every run
+and is the only code that moves an application between screening states.
+"""
+
 from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import AsyncIterator, Awaitable, Callable
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.exceptions import (
-    ApplicationNotFoundError,
-    EvaluationFailedError,
-    InvalidResumeError,
-)
+from app.core.exceptions import EvaluationFailedError, InvalidResumeError
 from app.db.session import SessionLocal
 from app.integrations import storage
-from app.integrations.llm import EvaluationCompleter
-from app.models import Application, ApplicationStatus
+from app.integrations.llm import EvaluationCompleter, JobLike
+from app.models import (
+    PHASE_ORDER,
+    Application,
+    ApplicationStatus,
+    PhaseOutcome,
+    PhaseResult,
+    ReasonCode,
+    ScreeningPhase,
+)
 from app.repositories import applications as applications_repo
 from app.repositories import evaluations as evaluations_repo
+from app.repositories import phase_results as phase_results_repo
+from app.schemas.evaluation import EvaluationResult
+from app.schemas.forms import parse_form_fields
 from app.services import evaluation as evaluation_service
-from app.services.ingestion import IngestionResult, extract_text
+from app.services import screening
+from app.services.ingestion import extract_text
 
 logger = logging.getLogger(__name__)
 
@@ -34,101 +52,243 @@ def _semaphore() -> asyncio.Semaphore:
     return _llm_semaphore
 
 
-async def _mark_failed(session: AsyncSession, application: Application) -> None:
-    application.status = ApplicationStatus.FAILED
+@dataclass(frozen=True)
+class Reason:
+    code: ReasonCode
+    message: str
+    field_id: UUID | None = None
+
+    def dump(self) -> dict[str, Any]:
+        data: dict[str, Any] = {"code": self.code.value, "message": self.message}
+        if self.field_id is not None:
+            data["field_id"] = str(self.field_id)
+        return data
+
+
+@dataclass(frozen=True)
+class PhaseRun:
+    phase: ScreeningPhase
+    outcome: PhaseOutcome
+    reasons: tuple[Reason, ...] = ()
+    evidence: dict[str, Any] = field(default_factory=dict)
+    config_version: str | None = None
+    # Terminal status for the application; None means the run continues.
+    status: ApplicationStatus | None = None
+    evaluation: EvaluationResult | None = None
+    extracted_text: str | None = None
+
+    @property
+    def stopped(self) -> bool:
+        return self.outcome in (PhaseOutcome.FAIL, PhaseOutcome.ERROR)
+
+
+@dataclass
+class _JobSnapshot:
+    """Job fields the resume phase needs once the session is closed."""
+
+    title: str
+    description: str
+    requirements: str
+
+
+def phase_after(phase: ScreeningPhase | None) -> ScreeningPhase | None:
+    if phase is None:
+        return PHASE_ORDER[0]
+    index = PHASE_ORDER.index(phase)
+    return PHASE_ORDER[index + 1] if index + 1 < len(PHASE_ORDER) else None
+
+
+def phase_before(phase: ScreeningPhase) -> ScreeningPhase | None:
+    index = PHASE_ORDER.index(phase)
+    return PHASE_ORDER[index - 1] if index > 0 else None
+
+
+def restart_after(application: Application, phase: ScreeningPhase | None) -> None:
+    """Queue the application to run again from the phase after `phase`."""
+    application.status = ApplicationStatus.PROCESSING
+    application.current_phase = phase
+    application.stopped_phase = None
+    application.stop_code = None
+    application.stop_reason = None
+    application.reviewed_at = None
     application.score = None
-    await session.commit()
+    application.processing_started_at = datetime.now(UTC)
 
 
-async def _prepare_storage_key(
-    session: AsyncSession,
-    application_id: UUID,
-    *,
-    reclaim_processing: bool,
-) -> str | None:
-    claimed = await applications_repo.claim_for_processing(
-        session, application_id, reclaim_processing=reclaim_processing
+# --- phases ---------------------------------------------------------------------------
+
+
+def _error(phase: ScreeningPhase, code: ReasonCode, message: str) -> PhaseRun:
+    return PhaseRun(
+        phase,
+        PhaseOutcome.ERROR,
+        reasons=(Reason(code, message),),
+        status=ApplicationStatus.FAILED,
     )
-    if not claimed:
-        return None
-    application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
-    if application is None or application.job is None:
-        return None
-    storage_key = application.resume_storage_key
-    if storage_key is None or not await storage.exists(storage_key):
-        await _mark_failed(session, application)
-        return None
-    return storage_key
 
 
-async def _ingest(storage_key: str) -> IngestionResult:
-    pdf_bytes = await storage.get(storage_key)
-    return await extract_text(pdf_bytes)
+async def _accept(application: Application) -> PhaseRun:
+    key = application.resume_storage_key
+    if key is None or not await storage.exists(key):
+        return _error(ScreeningPhase.ACCEPT, ReasonCode.MISSING_FILE, "Resume file is missing")
+    return PhaseRun(ScreeningPhase.ACCEPT, PhaseOutcome.PASS)
 
 
-async def _finalize(
-    session: AsyncSession,
-    application: Application,
-    ingestion: IngestionResult,
+async def _knockout(application: Application) -> PhaseRun:
+    fields = parse_form_fields(application.job.form_fields)
+    version = screening.config_version(application.job.form_fields)
+    if not screening.has_knockouts(fields):
+        return PhaseRun(ScreeningPhase.KNOCKOUT, PhaseOutcome.SKIPPED, config_version=version)
+    failures = screening.evaluate_knockouts(fields, application.answers or {})
+    if not failures:
+        return PhaseRun(ScreeningPhase.KNOCKOUT, PhaseOutcome.PASS, config_version=version)
+    return PhaseRun(
+        ScreeningPhase.KNOCKOUT,
+        PhaseOutcome.FAIL,
+        reasons=tuple(
+            Reason(ReasonCode.KNOCKOUT_FAILED, item.reason, item.field_id) for item in failures
+        ),
+        config_version=version,
+        status=ApplicationStatus.KNOCKED_OUT,
+    )
+
+
+async def _answers(application: Application) -> PhaseRun:
+    fields = parse_form_fields(application.job.form_fields)
+    scored = screening.score_answers(fields, application.answers or {})
+    version = screening.config_version(application.job.form_fields)
+    if scored is None:
+        return PhaseRun(ScreeningPhase.ANSWERS, PhaseOutcome.SKIPPED, config_version=version)
+    return PhaseRun(
+        ScreeningPhase.ANSWERS,
+        PhaseOutcome.PASS,
+        evidence={"answers_score": scored.score, "fields": scored.breakdown},
+        config_version=version,
+    )
+
+
+_CODE_PHASES: dict[ScreeningPhase, Callable[[Application], Awaitable[PhaseRun]]] = {
+    ScreeningPhase.ACCEPT: _accept,
+    ScreeningPhase.KNOCKOUT: _knockout,
+    ScreeningPhase.ANSWERS: _answers,
+}
+
+
+async def _resume(
+    application_id: UUID,
+    storage_key: str,
+    job: JobLike,
     completer: EvaluationCompleter | None,
-) -> None:
-    job = application.job
-    if job is None:
-        await _mark_failed(session, application)
-        return
-    application.extracted_text = ingestion.text
-    await session.commit()
+) -> PhaseRun:
+    """OCR the page images and ask the model. Runs with no open session."""
+    phase = ScreeningPhase.RESUME
+    unreadable = "Resume text could not be read"
+    try:
+        ingestion = await extract_text(await storage.get(storage_key))
+    except (InvalidResumeError, OSError, ValueError) as exc:
+        _log_failure("ingestion", application_id, exc)
+        return _error(phase, ReasonCode.UNREADABLE, unreadable)
+    if ingestion.too_empty:
+        return _error(phase, ReasonCode.UNREADABLE, unreadable)
+
     try:
         async with _semaphore():
             result = await evaluation_service.evaluate(job, ingestion.text, completer=completer)
-    except EvaluationFailedError:
-        logger.exception("application processing failed during evaluation")
-        await _mark_failed(session, application)
-        return
-    await evaluations_repo.delete_by_application_id(session, application.id)
-    await evaluation_service.save_evaluation(session, application.id, result, commit=False)
-    application.status = ApplicationStatus.SCORED if result.is_resume else ApplicationStatus.REFUSED
-    application.score = result.score
-    await session.commit()
+    except EvaluationFailedError as exc:
+        _log_failure("evaluation", application_id, exc)
+        run = _error(phase, ReasonCode.SCORING_FAILED, "Scoring failed")
+        return replace(run, extracted_text=ingestion.text)
 
-
-async def _mark_failed_by_id(application_id: UUID) -> None:
-    async with SessionLocal() as owned:
-        application = await applications_repo.get_by_id(
-            owned, application_id, populate_existing=True
-        )
-        if application is not None:
-            await _mark_failed(owned, application)
-
-
-async def _process(
-    session: AsyncSession,
-    application_id: UUID,
-    *,
-    reclaim_processing: bool,
-    completer: EvaluationCompleter | None,
-) -> None:
-    storage_key = await _prepare_storage_key(
-        session, application_id, reclaim_processing=reclaim_processing
+    version = screening.config_version(
+        {"description": job.description, "requirements": job.requirements}
     )
-    if storage_key is None:
+    if not result.is_resume:
+        return PhaseRun(
+            phase,
+            PhaseOutcome.FAIL,
+            reasons=(Reason(ReasonCode.NOT_RESUME, result.refusal_reason or "Not a resume"),),
+            config_version=version,
+            status=ApplicationStatus.REFUSED,
+            evaluation=result,
+            extracted_text=ingestion.text,
+        )
+    return PhaseRun(
+        phase,
+        PhaseOutcome.REVIEW if result.needs_review else PhaseOutcome.PASS,
+        evidence={"score": result.score},
+        config_version=version,
+        status=ApplicationStatus.SCORED,
+        evaluation=result,
+        extracted_text=ingestion.text,
+    )
+
+
+def _log_failure(stage: str, application_id: UUID, exc: BaseException) -> None:
+    # Exception text can carry resume or model output, so only the type is logged (Rule 4).
+    logger.warning(
+        "resume phase failed stage=%s application_id=%s error=%s",
+        stage,
+        application_id,
+        type(exc).__name__,
+    )
+
+
+# --- runner ---------------------------------------------------------------------------
+
+
+@asynccontextmanager
+async def _scope(session: AsyncSession | None) -> AsyncIterator[AsyncSession]:
+    """Use the caller's session, or a short-lived one so no connection is held during OCR/LLM."""
+    if session is not None:
+        yield session
         return
-    try:
-        ingestion = await _ingest(storage_key)
-    except InvalidResumeError, OSError, ValueError:
-        logger.exception("application processing failed during ingestion")
-        await _mark_failed_after_prepare(session, application_id)
-        return
+    async with SessionLocal() as owned:
+        yield owned
+
+
+async def _load(session: AsyncSession, application_id: UUID) -> Application | None:
     application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
     if application is None or application.job is None:
-        return
-    await _finalize(session, application, ingestion, completer)
+        return None
+    return application
 
 
-async def _mark_failed_after_prepare(session: AsyncSession, application_id: UUID) -> None:
-    application = await applications_repo.get_by_id(session, application_id, populate_existing=True)
-    if application is not None:
-        await _mark_failed(session, application)
+async def _record(session: AsyncSession, application: Application, run: PhaseRun) -> None:
+    """Write the phase_results row and move the application's state in one commit."""
+    result = run.evaluation
+    await phase_results_repo.add(
+        session,
+        PhaseResult(
+            application_id=application.id,
+            phase=run.phase,
+            outcome=run.outcome,
+            reasons=[reason.dump() for reason in run.reasons],
+            evidence=run.evidence,
+            config_version=run.config_version,
+            model_name=None if result is None else result.model_name or None,
+            prompt_version=None if result is None else result.prompt_version,
+            input_tokens=None if result is None else result.input_tokens,
+            output_tokens=None if result is None else result.output_tokens,
+            latency_ms=None if result is None else result.latency_ms,
+        ),
+    )
+    if run.extracted_text is not None:
+        application.extracted_text = run.extracted_text
+    if result is not None:
+        await evaluations_repo.delete_by_application_id(session, application.id)
+        await evaluation_service.save_evaluation(session, application.id, result, commit=False)
+        application.score = result.score
+    application.current_phase = run.phase
+    if run.stopped:
+        application.stopped_phase = run.phase
+        application.stop_code = run.reasons[0].code.value if run.reasons else None
+        application.stop_reason = "; ".join(reason.message for reason in run.reasons) or None
+    if run.status is not None:
+        application.status = run.status
+    else:
+        # Still running: refresh the clock the stuck sweep uses.
+        application.processing_started_at = datetime.now(UTC)
+    await session.commit()
 
 
 async def process_application(
@@ -138,34 +298,42 @@ async def process_application(
     reclaim_processing: bool = False,
     completer: EvaluationCompleter | None = None,
 ) -> None:
-    if session is not None:
-        await _process(
-            session,
-            application_id,
-            reclaim_processing=reclaim_processing,
-            completer=completer,
-        )
-        return
-    storage_key: str | None = None
-    async with SessionLocal() as owned:
-        storage_key = await _prepare_storage_key(
-            owned, application_id, reclaim_processing=reclaim_processing
-        )
-    if storage_key is None:
-        return
-    try:
-        ingestion = await _ingest(storage_key)
-    except InvalidResumeError, OSError, ValueError:
-        logger.exception("application processing failed during ingestion")
-        await _mark_failed_by_id(application_id)
-        return
-    async with SessionLocal() as owned:
-        application = await applications_repo.get_by_id(
-            owned, application_id, populate_existing=True
-        )
-        if application is None or application.job is None:
+    """Run the remaining phases in order, resuming after `current_phase`."""
+    async with _scope(session) as active:
+        if not await applications_repo.claim_for_processing(
+            active, application_id, reclaim_processing=reclaim_processing
+        ):
             return
-        await _finalize(owned, application, ingestion, completer)
+        application = await _load(active, application_id)
+        if application is None:
+            return
+        start = phase_after(application.current_phase)
+        if start is None:
+            # Nothing left to run; only reachable if state was edited by hand.
+            run = _error(ScreeningPhase.RESUME, ReasonCode.SCORING_FAILED, "Nothing left to run")
+            await _record(active, application, run)
+            return
+        for phase in PHASE_ORDER[PHASE_ORDER.index(start) :]:
+            runner = _CODE_PHASES.get(phase)
+            if runner is None:
+                continue
+            run = await runner(application)
+            await _record(active, application, run)
+            if run.stopped:
+                return
+        storage_key = application.resume_storage_key
+        job = _JobSnapshot(
+            application.job.title, application.job.description, application.job.requirements
+        )
+
+    if storage_key is None:
+        run = _error(ScreeningPhase.RESUME, ReasonCode.MISSING_FILE, "Resume file is missing")
+    else:
+        run = await _resume(application_id, storage_key, job, completer)
+    async with _scope(session) as active:
+        application = await _load(active, application_id)
+        if application is not None:
+            await _record(active, application, run)
 
 
 async def recover_stuck_applications(
@@ -179,10 +347,7 @@ async def recover_stuck_applications(
         ids = await applications_repo.list_stuck_ids(active, cutoff)
         for application_id in ids:
             await process_application(
-                application_id,
-                active,
-                reclaim_processing=True,
-                completer=completer,
+                application_id, active, reclaim_processing=True, completer=completer
             )
         return ids
 
@@ -190,18 +355,3 @@ async def recover_stuck_applications(
         return await _run(session)
     async with SessionLocal() as owned:
         return await _run(owned)
-
-
-async def rescore_application(
-    session: AsyncSession,
-    application_id: UUID,
-    recruiter_id: UUID,
-) -> Application:
-    application = await applications_repo.get_by_id_and_recruiter(
-        session, application_id, recruiter_id
-    )
-    if application is None or application.status != ApplicationStatus.FAILED:
-        raise ApplicationNotFoundError
-    application.status = ApplicationStatus.PROCESSING
-    await session.commit()
-    return application
