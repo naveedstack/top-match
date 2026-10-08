@@ -140,6 +140,7 @@ In one commit it:
 A phase with nothing to check (no knockout questions, no weighted questions) is recorded as
 `skipped`.
 
+
 ### Knockout phase
 
 Knockout rules live on the form field, next to the question:
